@@ -1,0 +1,274 @@
+import React, { useState } from 'react';
+import {
+  ShieldCheck,
+  Mail,
+  Lock,
+  User,
+  AlertCircle,
+  Loader2,
+  X,
+  Sparkles
+} from 'lucide-react';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signInAnonymously,
+  updateProfile
+} from 'firebase/auth';
+import { auth } from '../lib/firebase';
+
+interface AuthModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess?: () => void;
+}
+
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!isOpen) return null;
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isSignUp) {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        if (displayName.trim()) {
+          await updateProfile(userCredential.user, {
+            displayName: displayName.trim(),
+          });
+        }
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      onSuccess?.();
+      onClose();
+    } catch (err: any) {
+      console.error('Auth Error:', err);
+      let msg = err.message || 'Authentication failed. Please try again.';
+      if (err.code === 'auth/email-already-in-use') {
+        msg = 'An account with this email already exists. Try signing in.';
+      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        msg = 'Invalid email or password.';
+      } else if (err.code === 'auth/weak-password') {
+        msg = 'Password should be at least 6 characters.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        msg = 'Email/Password authentication is disabled in Firebase Console. Please use Quick Demo Sign-In below.';
+      }
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      onSuccess?.();
+      onClose();
+    } catch (err: any) {
+      console.error('Google Sign-In Error:', err);
+      setError('Google sign-in failed. Try Quick Developer Sign-In below.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickDemoLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const cred = await signInAnonymously(auth);
+      await updateProfile(cred.user, {
+        displayName: 'Demo Developer',
+      });
+      onSuccess?.();
+      onClose();
+    } catch (err: any) {
+      console.error('Anonymous Sign-In Error:', err);
+      setError('Could not connect to developer session.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-xl p-6 sm:p-8 overflow-hidden">
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Logo & Header */}
+        <div className="text-center mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center mx-auto mb-3 shadow-sm shadow-indigo-600/20">
+            <ShieldCheck className="w-6 h-6 text-white" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">
+            {isSignUp ? 'Create Developer Account' : 'Sign In to MalikAuth'}
+          </h2>
+          <p className="text-xs text-slate-500 mt-1">
+            {isSignUp
+              ? 'Get started with enterprise MalikAuth licensing'
+              : 'Access your MalikAuth security console and license keys'}
+          </p>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-5 bg-rose-50 border border-rose-200 text-rose-800 px-3.5 py-2.5 rounded-xl text-xs flex items-center space-x-2 shadow-xs">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Email Form */}
+        <form onSubmit={handleEmailAuth} className="space-y-4">
+          {isSignUp && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Developer Name / Company
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <User className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="e.g. Apex Software LLC"
+                  required={isSignUp}
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 transition-colors"
+                />
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Email Address
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <Mail className="w-4 h-4" />
+              </div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="developer@example.com"
+                required
+                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 transition-colors"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={6}
+                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 transition-colors"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold rounded-xl text-xs transition-all shadow-sm shadow-indigo-600/20 flex items-center justify-center space-x-2"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Authenticating...</span>
+              </>
+            ) : (
+              <span>{isSignUp ? 'Create Developer Account' : 'Sign In'}</span>
+            )}
+          </button>
+        </form>
+
+        {/* Divider */}
+        <div className="my-5 flex items-center space-x-3 text-xs text-slate-400">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span>or continue with</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+
+        {/* Google Sign In Button */}
+        <div className="space-y-2.5">
+          <button
+            type="button"
+            onClick={handleGoogleSignIn}
+            disabled={loading}
+            className="w-full py-2.5 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-medium rounded-xl text-xs transition-colors flex items-center justify-center space-x-2 shadow-xs"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+            <span>Sign in with Google</span>
+          </button>
+        </div>
+
+        {/* Toggle Sign Up / Sign In */}
+        <div className="mt-6 text-center text-xs text-slate-500">
+          <span>{isSignUp ? 'Already have an account?' : "Don't have an account yet?"}</span>{' '}
+          <button
+            type="button"
+            onClick={() => {
+              setIsSignUp(!isSignUp);
+              setError(null);
+            }}
+            className="text-indigo-600 hover:text-indigo-700 font-semibold underline underline-offset-2"
+          >
+            {isSignUp ? 'Sign In' : 'Create Account'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

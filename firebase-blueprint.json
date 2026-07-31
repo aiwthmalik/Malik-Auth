@@ -1,0 +1,90 @@
+{
+  "entities": [
+    {
+      "name": "applications",
+      "description": "MalikAuth software applications managed by developers",
+      "properties": {
+        "name": { "type": "string", "description": "Application title" },
+        "appId": { "type": "string", "description": "Unique MalikAuth App ID" },
+        "appSecret": { "type": "string", "description": "App Secret for SDK verification" },
+        "version": { "type": "string", "description": "Current client build version" },
+        "status": { "type": "string", "description": "Active, Maintenance, or Disabled" },
+        "ownerId": { "type": "string", "description": "Developer UID" },
+        "encryptionKey": { "type": "string", "description": "AES encryption key for remote sync" },
+        "allowHwidReset": { "type": "boolean", "description": "Allow automatic HWID reset on cooldown" },
+        "motd": { "type": "string", "description": "Message of the Day for remote client sync" },
+        "createdAt": { "type": "string", "description": "ISO timestamp" }
+      }
+    },
+    {
+      "name": "licenses",
+      "description": "License keys generated for MalikAuth applications",
+      "properties": {
+        "key": { "type": "string", "description": "Formatted license string e.g. MALIK-XXXX-XXXX-XXXX" },
+        "appId": { "type": "string", "description": "Associated Application ID" },
+        "durationDays": { "type": "number", "description": "Validity period in days (or 9999 for lifetime)" },
+        "role": { "type": "string", "description": "Role assigned upon activation e.g. Basic, VIP, Enterprise, Admin" },
+        "maxDevices": { "type": "number", "description": "Maximum HWID devices allowed" },
+        "status": { "type": "string", "description": "Unused, Active, Expired, Banned" },
+        "note": { "type": "string", "description": "Developer comment or customer reference" },
+        "usedBy": { "type": "string", "description": "HWID or username of activated client" },
+        "activatedAt": { "type": "string", "description": "ISO timestamp when first used" },
+        "expiresAt": { "type": "string", "description": "ISO timestamp when license expires" },
+        "createdAt": { "type": "string", "description": "ISO timestamp when key was created" }
+      }
+    },
+    {
+      "name": "users",
+      "description": "End-users authenticated via MalikAuth SDK into software",
+      "properties": {
+        "username": { "type": "string", "description": "End user username" },
+        "appId": { "type": "string", "description": "Associated Application ID" },
+        "hwid": { "type": "string", "description": "Hardware Identification String" },
+        "role": { "type": "string", "description": "User Role e.g. VIP, Admin, Basic" },
+        "licenseKey": { "type": "string", "description": "License key used by user" },
+        "ipAddress": { "type": "string", "description": "Last recorded IP address" },
+        "status": { "type": "string", "description": "Active, Banned, Suspended" },
+        "lastSeen": { "type": "string", "description": "ISO timestamp of last heartbeat" },
+        "createdAt": { "type": "string", "description": "ISO timestamp" }
+      }
+    },
+    {
+      "name": "sessions",
+      "description": "Real-time client session tracking and remote kill switch",
+      "properties": {
+        "sessionId": { "type": "string", "description": "Unique active session token" },
+        "appId": { "type": "string", "description": "Associated Application ID" },
+        "username": { "type": "string", "description": "Authenticated username" },
+        "hwid": { "type": "string", "description": "Hardware ID" },
+        "ipAddress": { "type": "string", "description": "Client IP address" },
+        "status": { "type": "string", "description": "Active, Revoked, Terminated" },
+        "lastHeartbeat": { "type": "string", "description": "ISO timestamp of most recent heartbeat" },
+        "createdAt": { "type": "string", "description": "ISO timestamp" }
+      }
+    },
+    {
+      "name": "remote_variables",
+      "description": "Secure remote server synchronization variables and payloads for clients",
+      "properties": {
+        "appId": { "type": "string", "description": "Associated Application ID" },
+        "key": { "type": "string", "description": "Variable key e.g. DOWNLOAD_URL or OFFSET_SECRET" },
+        "value": { "type": "string", "description": "Secret or dynamic value pushed to C# clients" },
+        "isEncrypted": { "type": "boolean", "description": "Whether to encrypt before transmitting over API" },
+        "minRole": { "type": "string", "description": "Minimum user role required to retrieve this variable" },
+        "updatedAt": { "type": "string", "description": "ISO timestamp" }
+      }
+    },
+    {
+      "name": "activity_logs",
+      "description": "Audit trail of login attempts, license activations, HWID resets, and remote syncs",
+      "properties": {
+        "appId": { "type": "string", "description": "Associated Application ID" },
+        "action": { "type": "string", "description": "Action type e.g. LICENSE_ACTIVATED, USER_LOGIN, HWID_RESET" },
+        "actor": { "type": "string", "description": "Username, license key, or admin email" },
+        "hwid": { "type": "string", "description": "HWID involved" },
+        "details": { "type": "string", "description": "Human-readable log description" },
+        "timestamp": { "type": "string", "description": "ISO timestamp" }
+      }
+    }
+  ]
+}
