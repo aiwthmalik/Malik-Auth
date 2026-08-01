@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import {
-  Lock,
   Plus,
   Trash2,
   Edit2,
-  Shield,
   Eye,
   EyeOff,
   Database,
@@ -13,6 +11,9 @@ import {
 } from 'lucide-react';
 import { MalikRemoteVariable } from '../types';
 import { setRemoteVariable, deleteRemoteVariable } from '../lib/malikAuthService';
+import { formatPKTDateTime } from '../lib/dateUtils';
+import { ActionMenu, ActionMenuItem } from './ActionMenu';
+import { ConfirmModal } from './ConfirmModal';
 
 interface RemoteVariablesTabProps {
   appId: string;
@@ -32,6 +33,8 @@ export const RemoteVariablesTab: React.FC<RemoteVariablesTabProps> = ({
   const [loading, setLoading] = useState(false);
   const [visibleValues, setVisibleValues] = useState<Record<string, boolean>>({});
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [varToDelete, setVarToDelete] = useState<{ id: string; key: string } | null>(null);
+  const [deletingVar, setDeletingVar] = useState(false);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,10 +58,18 @@ export const RemoteVariablesTab: React.FC<RemoteVariablesTabProps> = ({
     }
   };
 
-  const handleDelete = async (id: string, varKey: string) => {
-    if (!window.confirm(`Delete remote variable ${varKey}?`)) return;
-    await deleteRemoteVariable(id);
-    onRefresh();
+  const confirmDeleteVar = async () => {
+    if (!varToDelete) return;
+    setDeletingVar(true);
+    try {
+      await deleteRemoteVariable(varToDelete.id);
+      setVarToDelete(null);
+      onRefresh();
+    } catch (err) {
+      console.error('Failed to delete remote variable:', err);
+    } finally {
+      setDeletingVar(false);
+    }
   };
 
   const toggleVisible = (id: string) => {
@@ -73,18 +84,13 @@ export const RemoteVariablesTab: React.FC<RemoteVariablesTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Banner & Form */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center space-x-3 border-b border-slate-200 pb-4 mb-5">
-          <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+      {/* Banner & Form (Minimal Header) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm">
+        <div className="flex items-center space-x-3 border-b border-slate-200 pb-3 mb-4">
+          <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
             <Database className="w-5 h-5" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Remote Server Synchronization Variables</h2>
-            <p className="text-xs text-slate-500">
-              Push dynamic offsets, encrypted strings, or download URLs to your client software without re-compiling your application.
-            </p>
-          </div>
+          <h2 className="text-lg font-bold text-slate-900">Remote Server Variables</h2>
         </div>
 
         <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
@@ -179,6 +185,25 @@ export const RemoteVariablesTab: React.FC<RemoteVariablesTabProps> = ({
               <tbody className="divide-y divide-slate-100">
                 {variables.map((v) => {
                   const isVisible = visibleValues[v.id || v.key];
+
+                  const rowMenuItems: ActionMenuItem[] = [
+                    {
+                      label: 'Edit Variable',
+                      icon: Edit2,
+                      onClick: () => {
+                        setKey(v.key);
+                        setValue(v.value);
+                        setMinRole(v.minRole);
+                      },
+                    },
+                    {
+                      label: 'Delete Variable',
+                      icon: Trash2,
+                      variant: 'danger',
+                      onClick: () => v.id && setVarToDelete({ id: v.id, key: v.key }),
+                    },
+                  ];
+
                   return (
                     <tr key={v.id || v.key} className="hover:bg-slate-50/80 transition-colors">
                       <td className="py-3.5 px-4 font-mono font-bold text-indigo-700">
@@ -221,30 +246,11 @@ export const RemoteVariablesTab: React.FC<RemoteVariablesTabProps> = ({
                           {v.minRole}+
                         </span>
                       </td>
-                      <td className="py-3.5 px-4 text-xs text-slate-500">
-                        {new Date(v.updatedAt).toLocaleDateString()}
+                      <td className="py-3.5 px-4 text-xs font-medium text-slate-600">
+                        {formatPKTDateTime(v.updatedAt)}
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => {
-                              setKey(v.key);
-                              setValue(v.value);
-                              setMinRole(v.minRole);
-                            }}
-                            className="text-slate-400 hover:text-indigo-600 p-1"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => v.id && handleDelete(v.id, v.key)}
-                            className="text-slate-400 hover:text-rose-600 p-1"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <ActionMenu items={rowMenuItems} align="right" />
                       </td>
                     </tr>
                   );
@@ -254,6 +260,16 @@ export const RemoteVariablesTab: React.FC<RemoteVariablesTabProps> = ({
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!varToDelete}
+        title="Delete Remote Variable"
+        message={`Are you sure you want to delete remote variable "${varToDelete?.key}"? This action is irreversible.`}
+        confirmLabel="Delete Variable"
+        isLoading={deletingVar}
+        onConfirm={confirmDeleteVar}
+        onClose={() => setVarToDelete(null)}
+      />
     </div>
   );
 };

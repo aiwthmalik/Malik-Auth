@@ -3,13 +3,14 @@ import {
   Radio,
   Power,
   Search,
-  ShieldAlert,
-  Clock,
   Check,
-  AlertTriangle
+  Trash2
 } from 'lucide-react';
 import { MalikSession } from '../types';
-import { terminateSession } from '../lib/malikAuthService';
+import { terminateSession, deleteSession } from '../lib/malikAuthService';
+import { formatPKTDateTime } from '../lib/dateUtils';
+import { ActionMenu, ActionMenuItem } from './ActionMenu';
+import { ConfirmModal } from './ConfirmModal';
 
 interface SessionsTabProps {
   appId: string;
@@ -19,21 +20,36 @@ interface SessionsTabProps {
 
 export const SessionsTab: React.FC<SessionsTabProps> = ({ appId, sessions, onRefresh }) => {
   const [search, setSearch] = useState('');
-  const [terminatingId, setTerminatingId] = useState<string | null>(null);
+  const [sessionToKill, setSessionToKill] = useState<MalikSession | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<MalikSession | null>(null);
+  const [terminating, setTerminating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const handleTerminate = async (session: MalikSession) => {
-    if (!session.id) return;
-    if (!window.confirm(`Remote Kill Switch: Terminate active session for ${session.username}? Their application will close immediately.`)) {
-      return;
-    }
-    setTerminatingId(session.id);
+  const confirmKillSession = async () => {
+    if (!sessionToKill || !sessionToKill.id) return;
+    setTerminating(true);
     try {
-      await terminateSession(session.id, session.sessionId, appId);
+      await terminateSession(sessionToKill.id, sessionToKill.sessionId, appId);
+      setSessionToKill(null);
       onRefresh();
     } catch (err) {
       console.error('Error terminating session:', err);
     } finally {
-      setTerminatingId(null);
+      setTerminating(false);
+    }
+  };
+
+  const confirmDeleteSession = async () => {
+    if (!sessionToDelete || !sessionToDelete.id) return;
+    setDeleting(true);
+    try {
+      await deleteSession(sessionToDelete.id);
+      setSessionToDelete(null);
+      onRefresh();
+    } catch (err) {
+      console.error('Error deleting session log:', err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -46,18 +62,13 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({ appId, sessions, onRef
 
   return (
     <div className="space-y-6">
-      {/* Banner */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      {/* Banner (Minimal) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-            <Radio className="w-6 h-6 animate-pulse" />
+          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+            <Radio className="w-5 h-5 animate-pulse" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Live Connected Sessions & Remote Kill Switch</h2>
-            <p className="text-xs text-slate-500">
-              Monitor active heartbeat timestamps. Terminating a session sends a remote kill command to the client application.
-            </p>
-          </div>
+          <h2 className="text-lg font-bold text-slate-900">Live Connected Sessions</h2>
         </div>
       </div>
 
@@ -90,64 +101,117 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({ appId, sessions, onRef
               <thead>
                 <tr className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                   <th className="py-3.5 px-4 font-semibold">Username</th>
-                  <th className="py-3.5 px-4 font-semibold">Session ID</th>
+                  <th className="py-3.5 px-4 font-semibold">Session ID (Hover to Reveal)</th>
                   <th className="py-3.5 px-4 font-semibold">HWID</th>
                   <th className="py-3.5 px-4 font-semibold">IP Address</th>
                   <th className="py-3.5 px-4 font-semibold">Status</th>
                   <th className="py-3.5 px-4 font-semibold">Last Heartbeat</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Remote Kill Switch</th>
+                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredSessions.map((s) => (
-                  <tr key={s.id || s.sessionId} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-bold text-slate-900">
-                      {s.username}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-indigo-700">
-                      {s.sessionId}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
-                      {s.hwid}
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-500">
-                      {s.ipAddress}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
-                          s.status === 'Active'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}
-                      >
-                        {s.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-xs text-slate-500">
-                      {new Date(s.lastHeartbeat).toLocaleTimeString()}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      {s.status === 'Active' ? (
-                        <button
-                          onClick={() => handleTerminate(s)}
-                          disabled={terminatingId === s.id}
-                          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold inline-flex items-center space-x-1.5 transition-colors"
+                {filteredSessions.map((s) => {
+                  const rowMenuItems: ActionMenuItem[] = [
+                    ...(s.status === 'Active'
+                      ? [
+                          {
+                            label: 'Kill Live Session',
+                            icon: Power,
+                            variant: 'danger' as const,
+                            onClick: () => setSessionToKill(s),
+                          },
+                        ]
+                      : []),
+                    {
+                      label: 'Delete Session Log',
+                      icon: Trash2,
+                      variant: 'danger' as const,
+                      onClick: () => setSessionToDelete(s),
+                    },
+                  ];
+
+                  return (
+                    <tr key={s.id || s.sessionId} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4 font-bold text-slate-900">
+                        {s.username}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-xs text-indigo-700">
+                        <span
+                          className="blur-xs hover:blur-none transition-all duration-200 cursor-pointer select-all"
+                          title="Hover to reveal Session ID"
                         >
-                          <Power className="w-3.5 h-3.5" />
-                          <span>Kill Session</span>
-                        </button>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">Terminated</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                          {s.sessionId}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
+                        {s.hwid ? (
+                          <span
+                            className="blur-xs hover:blur-none transition-all duration-200 cursor-pointer select-all"
+                            title="Hover to reveal HWID"
+                          >
+                            {s.hwid}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-xs text-slate-500">
+                        {s.ipAddress ? (
+                          <span
+                            className="blur-xs hover:blur-none transition-all duration-200 cursor-pointer select-all"
+                            title="Hover to reveal IP Address"
+                          >
+                            {s.ipAddress}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
+                            s.status === 'Active'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}
+                        >
+                          {s.status}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs font-medium text-slate-600">
+                        {formatPKTDateTime(s.lastHeartbeat)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <ActionMenu items={rowMenuItems} align="right" />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={!!sessionToKill}
+        title="Kill Live Connected Session"
+        message={`Are you sure you want to kill the active session for user "${sessionToKill?.username}"? Their application client will terminate immediately.`}
+        confirmLabel="Kill Session"
+        isLoading={terminating}
+        onConfirm={confirmKillSession}
+        onClose={() => setSessionToKill(null)}
+      />
+
+      <ConfirmModal
+        isOpen={!!sessionToDelete}
+        title="Delete Session Log"
+        message={`Are you sure you want to delete session log "${sessionToDelete?.sessionId}" for user "${sessionToDelete?.username}"? This action is irreversible.`}
+        confirmLabel="Delete Session Log"
+        isLoading={deleting}
+        onConfirm={confirmDeleteSession}
+        onClose={() => setSessionToDelete(null)}
+      />
     </div>
   );
 };

@@ -4,6 +4,7 @@ export interface MalikApp {
   appId: string;
   appSecret: string;
   version: string;
+  appType?: string; // e.g. "C#", "C++", "Python", "Web"
   status: 'Active' | 'Maintenance' | 'Disabled';
   ownerId: string;
   encryptionKey: string;
@@ -19,7 +20,7 @@ export interface MalikLicense {
   keyName?: string;
   appId: string;
   durationDays?: number; // 9999 for Lifetime
-  role?: string;
+  role?: 'Admin' | 'Moderator' | 'User';
   maxDevices?: number;
   status: 'Unused' | 'Active' | 'Expired' | 'Banned';
   note: string;
@@ -37,7 +38,7 @@ export interface MalikUser {
   email?: string;
   appId: string;
   hwid: string;
-  role?: string;
+  role?: 'Admin' | 'Moderator' | 'User';
   licenseKey: string;
   ipAddress: string;
   status: 'Active' | 'Banned' | 'Suspended';
@@ -64,7 +65,7 @@ export interface MalikRemoteVariable {
   key: string;
   value: string;
   isEncrypted: boolean;
-  minRole: string; // e.g. "Basic", "VIP", "Admin"
+  minRole: 'Admin' | 'Moderator' | 'User';
   updatedAt: string;
 }
 
@@ -74,6 +75,23 @@ export interface MalikActivityLog {
   action: 'LICENSE_ACTIVATED' | 'USER_LOGIN' | 'HWID_RESET' | 'REMOTE_SYNC' | 'SESSION_REVOKED' | 'KEY_GENERATED';
   actor: string;
   hwid: string;
+  details: string;
+  timestamp: string;
+}
+
+export interface MalikCrashReport {
+  id?: string;
+  appId: string;
+  username: string;
+  message: string;
+  stackTrace: string;
+  timestamp: string;
+}
+
+export interface MalikAnalyticsLog {
+  id?: string;
+  appId: string;
+  eventType: string; // e.g., 'LOGIN', 'APP_LAUNCH', 'FEATURE_USE'
   details: string;
   timestamp: string;
 }

@@ -5,17 +5,19 @@ import {
   Copy,
   Check,
   Trash2,
-  Filter,
   Search,
   AlertCircle,
   Clock,
-  UserCheck,
   ShieldAlert,
-  X,
-  Calendar
+  X
 } from 'lucide-react';
 import { MalikLicense } from '../types';
 import { generateLicenses, deleteLicense, updateLicense, logActivity } from '../lib/malikAuthService';
+import { formatCustomExpiryDate, parseExpiryToDate, TIMEZONE_LABEL } from '../lib/dateUtils';
+import { ExpiryCountdown } from './ExpiryCountdown';
+import { ActionMenu, ActionMenuItem } from './ActionMenu';
+import { ConfirmModal } from './ConfirmModal';
+import { ExtendExpiryModal } from './ExtendExpiryModal';
 
 interface LicensesTabProps {
   appId: string;
@@ -23,27 +25,15 @@ interface LicensesTabProps {
   onRefresh: () => void;
 }
 
-const formatCustomExpiryDate = (d: Date): string => {
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  const day = pad(d.getDate());
-  const month = pad(d.getMonth() + 1);
-  const year = d.getFullYear();
-  
-  let hours = d.getHours();
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12;
-  const minutes = pad(d.getMinutes());
-  const seconds = pad(d.getSeconds());
-
-  return `[${day}/${month}/${year}][${pad(hours)}:${minutes}:${seconds} ${ampm}]`;
-};
-
 export const LicensesTab: React.FC<LicensesTabProps> = ({
   appId,
   licenses,
   onRefresh,
 }) => {
+  const [keyToDelete, setKeyToDelete] = useState<{ id: string; key: string } | null>(null);
+  const [deletingKey, setDeletingKey] = useState(false);
+  const [expiryModalLicense, setExpiryModalLicense] = useState<MalikLicense | null>(null);
+  const [updatingExpiry, setUpdatingExpiry] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [amount, setAmount] = useState(1);
   const [keyName, setKeyName] = useState('');
@@ -103,10 +93,19 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
     }
   };
 
-  const handleDelete = async (id: string, keyStr: string) => {
-    if (!window.confirm(`Delete license key ${keyStr}?`)) return;
-    await deleteLicense(id);
-    onRefresh();
+  const confirmDeleteKey = async () => {
+    if (!keyToDelete) return;
+    setDeletingKey(true);
+    try {
+      await deleteLicense(keyToDelete.id);
+      await logActivity(appId, 'KEY_GENERATED', 'Admin', 'N/A', `Deleted license key ${keyToDelete.key}`);
+      setKeyToDelete(null);
+      onRefresh();
+    } catch (err) {
+      console.error('Failed to delete license:', err);
+    } finally {
+      setDeletingKey(false);
+    }
   };
 
   const handleToggleBan = async (license: MalikLicense) => {
@@ -121,6 +120,27 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
       `Changed license ${license.key} status to ${newStatus}`
     );
     onRefresh();
+  };
+
+  const handleSaveExpiry = async (newExpiryStr: string) => {
+    if (!expiryModalLicense || !expiryModalLicense.id) return;
+    setUpdatingExpiry(true);
+    try {
+      await updateLicense(expiryModalLicense.id, { expiry: newExpiryStr });
+      await logActivity(
+        appId,
+        'KEY_GENERATED',
+        'Admin',
+        'N/A',
+        `Updated expiry for license ${expiryModalLicense.key} to ${newExpiryStr}`
+      );
+      setExpiryModalLicense(null);
+      onRefresh();
+    } catch (err) {
+      console.error('Failed to update expiry:', err);
+    } finally {
+      setUpdatingExpiry(false);
+    }
   };
 
   const copyKey = (key: string) => {
@@ -152,26 +172,21 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Generate Button */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      {/* Top Banner & Generate Button (Minimal) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
-          <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
-            <Key className="w-6 h-6" />
+          <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
+            <Key className="w-5 h-5" />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">License Key Repository</h2>
-            <p className="text-xs text-slate-500">
-              Manage your MALIK-XXXX-XXXX license keys, check hardware bindings, and generate new key batches.
-            </p>
-          </div>
+          <h2 className="text-lg font-bold text-slate-900">License Key Repository</h2>
         </div>
 
         <button
           onClick={() => setIsModalOpen(true)}
-          className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center space-x-2 transition-colors shadow-sm shadow-indigo-600/20 shrink-0"
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-colors shadow-sm shadow-indigo-600/20 shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>+ Generate License Keys</span>
+          <span>Generate Keys</span>
         </button>
       </div>
 
@@ -234,7 +249,7 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
                 <tr className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                   <th className="py-3.5 px-4 font-semibold">License Key (Hover to Reveal)</th>
                   <th className="py-3.5 px-4 font-semibold">Key Name</th>
-                  <th className="py-3.5 px-4 font-semibold">Expiry</th>
+                  <th className="py-3.5 px-4 font-semibold">Expiry & Countdown</th>
                   <th className="py-3.5 px-4 font-semibold">Status</th>
                   <th className="py-3.5 px-4 font-semibold">HWID / Used By</th>
                   <th className="py-3.5 px-4 font-semibold">Note</th>
@@ -242,82 +257,104 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredLicenses.map((lic) => (
-                  <tr key={lic.id || lic.key} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-indigo-700">
-                      <div className="flex items-center space-x-2">
-                        <span
-                          className="blur-sm hover:blur-none transition-all duration-200 cursor-pointer select-all"
-                          title="Hover to reveal license key"
-                        >
-                          {lic.key}
+                {filteredLicenses.map((lic) => {
+                  const targetDate = parseExpiryToDate(lic.expiry);
+                  const isTimePassed = targetDate ? targetDate.getTime() <= Date.now() : false;
+                  const effectiveStatus = (lic.status === 'Active' || lic.status === 'Unused') && isTimePassed ? 'Expired' : lic.status;
+
+                  const rowMenuItems: ActionMenuItem[] = [
+                    {
+                      label: 'Copy License Key',
+                      icon: Copy,
+                      onClick: () => copyKey(lic.key),
+                    },
+                    {
+                      label: 'Extend / Change Expiry',
+                      icon: Clock,
+                      variant: 'indigo',
+                      onClick: () => setExpiryModalLicense(lic),
+                    },
+                    {
+                      label: lic.status === 'Banned' ? 'Unban Key' : 'Ban Key',
+                      icon: ShieldAlert,
+                      variant: lic.status === 'Banned' ? 'success' : 'danger',
+                      onClick: () => handleToggleBan(lic),
+                    },
+                    {
+                      label: 'Delete Key',
+                      icon: Trash2,
+                      variant: 'danger',
+                      onClick: () => lic.id && setKeyToDelete({ id: lic.id, key: lic.key }),
+                    },
+                  ];
+
+                  return (
+                    <tr key={lic.id || lic.key} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3.5 px-4 font-mono font-bold text-indigo-700">
+                        <div className="flex items-center space-x-2">
+                          <span
+                            className="blur-sm hover:blur-none transition-all duration-200 cursor-pointer select-all"
+                            title="Hover to reveal license key"
+                          >
+                            {lic.key}
+                          </span>
+                          <button
+                            onClick={() => copyKey(lic.key)}
+                            className="text-slate-400 hover:text-slate-700 transition-colors p-1"
+                            title="Copy Key"
+                          >
+                            {copiedKey === lic.key ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-semibold text-slate-900">
+                        <span className="px-2.5 py-1 rounded-lg text-xs bg-slate-100 text-slate-800 border border-slate-200 font-medium">
+                          {lic.keyName || 'Standard Key'}
                         </span>
-                        <button
-                          onClick={() => copyKey(lic.key)}
-                          className="text-slate-400 hover:text-slate-700 transition-colors p-1"
-                          title="Copy Key"
-                        >
-                          {copiedKey === lic.key ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-600" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 font-semibold text-slate-900">
-                      <span className="px-2.5 py-1 rounded-lg text-xs bg-slate-100 text-slate-800 border border-slate-200 font-medium">
-                        {lic.keyName || 'Standard Key'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
-                      {lic.expiry || '—'}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
-                          lic.status === 'Unused'
-                            ? 'bg-sky-50 text-sky-700 border border-sky-200'
-                            : lic.status === 'Active'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : lic.status === 'Expired'
-                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                            : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}
-                      >
-                        {lic.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-slate-600">
-                      {lic.usedBy || '—'}
-                    </td>
-                    <td className="py-3.5 px-4 text-xs text-slate-700">
-                      {lic.note || '—'}
-                    </td>
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end space-x-2">
-                        <button
-                          onClick={() => handleToggleBan(lic)}
-                          className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors ${
-                            lic.status === 'Banned'
-                              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
-                              : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
+                        <ExpiryCountdown expiryStr={lic.expiry} />
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
+                            effectiveStatus === 'Unused'
+                              ? 'bg-sky-50 text-sky-700 border border-sky-200'
+                              : effectiveStatus === 'Active'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : effectiveStatus === 'Expired'
+                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                              : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}
-                          title={lic.status === 'Banned' ? 'Unban Key' : 'Ban Key'}
                         >
-                          {lic.status === 'Banned' ? 'Unban' : 'Ban'}
-                        </button>
-                        <button
-                          onClick={() => lic.id && handleDelete(lic.id, lic.key)}
-                          className="text-slate-400 hover:text-rose-600 transition-colors p-1"
-                          title="Delete Key"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {effectiveStatus}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 font-mono text-xs text-slate-600">
+                        {lic.usedBy ? (
+                          <span
+                            className="blur-xs hover:blur-none transition-all duration-200 cursor-pointer"
+                            title="Hover to reveal HWID"
+                          >
+                            {lic.usedBy}
+                          </span>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-xs text-slate-700">
+                        {lic.note || '—'}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <ActionMenu items={rowMenuItems} align="right" />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -395,10 +432,10 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
 
               {/* Improved Expiry Selection */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
                     <Clock className="w-4 h-4 text-indigo-600" />
-                    <span>Expiry Duration / Time</span>
+                    <span>Expiry Duration / Time ({TIMEZONE_LABEL})</span>
                   </label>
                   <span className="text-[11px] font-mono text-indigo-600 font-semibold">
                     {computeExpiryString()}
@@ -522,6 +559,25 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!keyToDelete}
+        title="Delete License Key"
+        message={`Are you sure you want to delete license key "${keyToDelete?.key}"? This action is irreversible.`}
+        confirmLabel="Delete License Key"
+        isLoading={deletingKey}
+        onConfirm={confirmDeleteKey}
+        onClose={() => setKeyToDelete(null)}
+      />
+
+      <ExtendExpiryModal
+        isOpen={!!expiryModalLicense}
+        title={`Extend / Change Expiry for Key "${expiryModalLicense?.key}"`}
+        currentExpiry={expiryModalLicense?.expiry}
+        isLoading={updatingExpiry}
+        onSave={handleSaveExpiry}
+        onClose={() => setExpiryModalLicense(null)}
+      />
     </div>
   );
 };

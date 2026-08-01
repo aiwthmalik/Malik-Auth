@@ -11,7 +11,7 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // End Users collection
+    // Users collection
     match /users/{userId} {
       allow read, write: if true;
     }
@@ -21,7 +21,7 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // Remote Sync Variables collection
+    // Remote Variables collection
     match /remote_variables/{varId} {
       allow read, write: if true;
     }
@@ -30,5 +30,16 @@ service cloud.firestore {
     match /activity_logs/{logId} {
       allow read, write: if true;
     }
+
+    // Crash Reports collection
+    match /crash_reports/{reportId} {
+      allow read, write: if true;
+    }
+    
+    // Analytics Logs collection
+    match /analytics_logs/{logId} {
+      allow read, write: if true;
+    }
   }
 }
+

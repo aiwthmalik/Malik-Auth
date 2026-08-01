@@ -262,6 +262,10 @@ export async function terminateSession(id: string, sessionId: string, appId: str
   await logActivity(appId, 'SESSION_REVOKED', 'Admin', sessionId, `Session terminated remotely by admin`);
 }
 
+export async function deleteSession(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'sessions', id));
+}
+
 // ========================
 // REMOTE VARIABLES API
 // ========================
@@ -323,4 +327,68 @@ export async function getActivityLogs(appId?: string): Promise<MalikActivityLog[
     console.error('Error loading local audit logs:', err);
     return [];
   }
+}
+
+// ============================================
+// REAL-TIME FIRESTORE SUBSCRIPTIONS (ONSNAPSHOT)
+// ============================================
+export function subscribeLicenses(
+  appId: string,
+  callback: (licenses: MalikLicense[]) => void
+): () => void {
+  const colRef = collection(db, 'licenses');
+  const q = query(colRef, where('appId', '==', appId));
+  return onSnapshot(q, (snapshot) => {
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikLicense));
+    callback(list);
+  }, (err) => {
+    console.error('Error subscribing to licenses:', err);
+  });
+}
+
+export function subscribeUsers(
+  appId: string,
+  callback: (users: MalikUser[]) => void
+): () => void {
+  const colRef = collection(db, 'users');
+  const q = query(colRef, where('appId', '==', appId));
+  return onSnapshot(q, (snapshot) => {
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikUser));
+    callback(list);
+  }, (err) => {
+    console.error('Error subscribing to users:', err);
+  });
+}
+
+export function subscribeSessions(
+  appId: string,
+  callback: (sessions: MalikSession[]) => void
+): () => void {
+  const colRef = collection(db, 'sessions');
+  const q = query(colRef, where('appId', '==', appId));
+  return onSnapshot(q, (snapshot) => {
+    const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikSession));
+    callback(list);
+  }, (err) => {
+    console.error('Error subscribing to sessions:', err);
+  });
+}
+
+export function subscribeActivityLogs(
+  appId: string,
+  callback: (logs: MalikActivityLog[]) => void
+): () => void {
+  const colRef = collection(db, 'activity_logs');
+  const q = query(colRef, where('appId', '==', appId), orderBy('timestamp', 'desc'));
+  return onSnapshot(q, (snapshot) => {
+    const firestoreLogs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikActivityLog));
+    const localKey = `malik_audit_logs_${appId}`;
+    const localLogs: MalikActivityLog[] = JSON.parse(localStorage.getItem(localKey) || '[]');
+    const combined = [...firestoreLogs, ...localLogs].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    callback(combined);
+  }, (err) => {
+    console.error('Error subscribing to activity logs:', err);
+  });
 }

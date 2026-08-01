@@ -8,8 +8,10 @@ import { SessionsTab } from './components/SessionsTab';
 import { RemoteVariablesTab } from './components/RemoteVariablesTab';
 import { ActivityLogsTab } from './components/ActivityLogsTab';
 import { ManageAppsTab } from './components/ManageAppsTab';
+import { SdkFilesTab } from './components/SdkFilesTab';
 import { LandingPage } from './components/LandingPage';
 import { AuthModal } from './components/AuthModal';
+import { PktClockHeader } from './components/PktClockHeader';
 
 import {
   MalikApp,
@@ -27,7 +29,11 @@ import {
   getUsers,
   getSessions,
   getRemoteVariables,
-  getActivityLogs
+  getActivityLogs,
+  subscribeLicenses,
+  subscribeUsers,
+  subscribeSessions,
+  subscribeActivityLogs
 } from './lib/malikAuthService';
 
 import { auth } from './lib/firebase';
@@ -37,7 +43,7 @@ import { ShieldCheck, Loader2, Sparkles, AlertCircle, PlusCircle } from 'lucide-
 export default function App() {
   const [apps, setApps] = useState<MalikApp[]>([]);
   const [selectedApp, setSelectedApp] = useState<MalikApp | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useState<string>('manage_apps');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,13 +131,39 @@ export default function App() {
   }, [selectedApp, loadAllData]);
 
   useEffect(() => {
-    loadApps();
-  }, []);
+    if (currentUser || viewMode === 'console') {
+      loadApps();
+    }
+  }, [currentUser, viewMode, loadApps]);
 
   useEffect(() => {
-    if (selectedApp) {
-      loadAllData(selectedApp);
-    }
+    if (!selectedApp) return;
+
+    loadAllData(selectedApp);
+
+    // Real-time Firestore subscriptions so key usage and user creation from WinForms show instantly
+    const unsubLics = subscribeLicenses(selectedApp.appId, (updatedLicenses) => {
+      setLicenses(updatedLicenses);
+    });
+
+    const unsubUsers = subscribeUsers(selectedApp.appId, (updatedUsers) => {
+      setUsers(updatedUsers);
+    });
+
+    const unsubSessions = subscribeSessions(selectedApp.appId, (updatedSessions) => {
+      setSessions(updatedSessions);
+    });
+
+    const unsubLogs = subscribeActivityLogs(selectedApp.appId, (updatedLogs) => {
+      setLogs(updatedLogs);
+    });
+
+    return () => {
+      unsubLics();
+      unsubUsers();
+      unsubSessions();
+      unsubLogs();
+    };
   }, [selectedApp, loadAllData]);
 
   const handleAppCreated = async (newId: string) => {
@@ -247,6 +279,10 @@ export default function App() {
                   onRefresh={() => loadAllData(selectedApp)}
                   onNavigateToTab={(tab) => setActiveTab(tab)}
                 />
+              )}
+
+              {activeTab === 'csharp_sdk' && (
+                <SdkFilesTab app={selectedApp} />
               )}
 
               {activeTab === 'licenses' && (

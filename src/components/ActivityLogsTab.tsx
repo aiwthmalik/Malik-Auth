@@ -8,6 +8,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { MalikActivityLog } from '../types';
+import { formatPKTDateTime } from '../lib/dateUtils';
 
 interface ActivityLogsTabProps {
   logs: MalikActivityLog[];
@@ -119,8 +120,8 @@ export const ActivityLogsTab: React.FC<ActivityLogsTabProps> = ({ logs, onRefres
                     <td className="py-3.5 px-4 text-slate-700 text-xs">
                       {log.details}
                     </td>
-                    <td className="py-3.5 px-4 text-right text-xs text-slate-500">
-                      {new Date(log.timestamp).toLocaleString()}
+                    <td className="py-3.5 px-4 text-right text-xs font-medium text-slate-600">
+                      {formatPKTDateTime(log.timestamp)}
                     </td>
                   </tr>
                 ))}

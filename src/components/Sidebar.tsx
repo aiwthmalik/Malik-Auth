@@ -14,7 +14,8 @@ import {
   Check,
   Shield,
   Sparkles,
-  AppWindow
+  AppWindow,
+  Code
 } from 'lucide-react';
 import { MalikApp } from '../types';
 
@@ -44,13 +45,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const navItems = [
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'manage_apps', label: 'Manage Applications', icon: AppWindow },
-    { id: 'licenses', label: 'License Keys', icon: Key },
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'csharp_sdk', label: 'C# WinForms SDK Files', icon: Code },
     { id: 'users', label: 'End Users', icon: Users },
+    { id: 'licenses', label: 'License Keys', icon: Key },
     { id: 'sessions', label: 'Live Sessions', icon: Radio },
     { id: 'remote', label: 'Remote Variables', icon: FileCode },
-    { id: 'logs', label: 'Activity Logs', icon: FileText },
   ];
 
   return (
