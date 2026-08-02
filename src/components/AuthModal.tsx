@@ -189,9 +189,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     }
   };
 
-  const handleSkipToConsole = () => {
-    onSuccess?.();
-    onClose();
+  const handleSkipToConsole = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Try anonymous sign-in first for a proper Firebase session
+      const cred = await signInAnonymously(auth);
+      await updateProfile(cred.user, { displayName: 'Guest Developer' });
+      onSuccess?.();
+      onClose();
+    } catch (err: any) {
+      console.error('Anonymous sign-in failed for skip:', err);
+      // If anonymous auth fails, still allow skip with a warning
+      // but at least try to proceed without auth
+      setError('Anonymous auth not enabled. Some features may not work properly.');
+      // Still proceed after a short delay
+      setTimeout(() => {
+        onSuccess?.();
+        onClose();
+      }, 1500);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputIcon = "w-full pl-10 pr-4 py-2.5 rounded-xl border border-surface-200 bg-white text-sm text-surface-900 placeholder-surface-400 outline-none transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder-surface-500";
