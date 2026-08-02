@@ -44,12 +44,12 @@ namespace MalikAuthApp
         // Build the form UI programmatically (no Designer needed)
         private void InitializeComponent()
         {
-            Text = "MalikAuth - Dashboard";
-            Size = new Size(480, 350);
-            StartPosition = FormStartPosition.CenterScreen;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MaximizeBox = false;
-            BackColor = Color.FromArgb(248, 250, 252);
+            this.Text = "MalikAuth - Dashboard";
+            this.Size = new Size(480, 350);
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.FormBorderStyle = FormBorderStyle.FixedDialog;
+            this.MaximizeBox = false;
+            this.BackColor = Color.FromArgb(248, 250, 252);
 
             var header = new Label
             {
@@ -89,8 +89,8 @@ namespace MalikAuthApp
             btnLogout.FlatAppearance.BorderSize = 0;
             btnLogout.Click += BtnLogout_Click;
 
-            Controls.AddRange(new Control[] { header, lblWelcome, infoBox, btnLogout });
-            Load += Main_Load;
+            this.Controls.AddRange(new Control[] { header, lblWelcome, infoBox, btnLogout });
+            this.Load += Main_Load;
         }
 
         private static Label MakeLabel(string text, Font font, Color color, int x, int y)

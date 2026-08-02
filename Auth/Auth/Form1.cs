@@ -10,6 +10,7 @@ namespace MalikAuthApp
     /// </summary>
     public partial class Login : Form
     {
+    {
         // Shared SDK instance accessible from all forms.
         // Replace placeholder values with your own from the MalikAuth dashboard.
         public static MalikAuthClient malikAuth = new MalikAuthClient(
