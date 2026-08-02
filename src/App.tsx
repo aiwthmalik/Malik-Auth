@@ -47,6 +47,7 @@ export default function App() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [fatalError, setFatalError] = useState<string | null>(null);
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [viewMode, setViewMode] = useState<'landing' | 'console'>('landing');
@@ -58,9 +59,23 @@ export default function App() {
   const [remoteVariables, setRemoteVariables] = useState<MalikRemoteVariable[]>([]);
   const [logs, setLogs] = useState<MalikActivityLog[]>([]);
 
+  // Global error boundary for React rendering errors
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error('Uncaught error:', event.error);
+      setFatalError(event.error?.message || 'An unexpected error occurred. Please refresh the page.');
+    };
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      // If we have a user but no view mode set and we're on landing, don't auto-switch
+    }, (err) => {
+      console.error('Auth state change error:', err);
+      setFatalError('Authentication error: ' + err.message);
     });
     return () => unsubscribe();
   }, []);
@@ -165,6 +180,26 @@ export default function App() {
   const handleAppCreated = async () => {
     await loadApps();
   };
+
+  if (fatalError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center p-6 text-center bg-surface-50 dark:bg-[#0b0b12]">
+        <div className="card max-w-md w-full p-8">
+          <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/10 text-rose-500 mx-auto">
+            <AlertCircle className="h-7 w-7" />
+          </div>
+          <h2 className="text-xl font-bold text-surface-900 dark:text-white mb-2">Something Went Wrong</h2>
+          <p className="text-sm text-surface-600 dark:text-surface-400 mb-6">{fatalError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="btn-primary w-full"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (viewMode === 'landing') {
     return (

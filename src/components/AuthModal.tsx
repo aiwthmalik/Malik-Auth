@@ -200,14 +200,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       onClose();
     } catch (err: any) {
       console.error('Anonymous sign-in failed for skip:', err);
-      // If anonymous auth fails, still allow skip with a warning
-      // but at least try to proceed without auth
-      setError('Anonymous auth not enabled. Some features may not work properly.');
-      // Still proceed after a short delay
-      setTimeout(() => {
-        onSuccess?.();
-        onClose();
-      }, 1500);
+      // If anonymous auth fails, show error but still allow skip if user confirms
+      setError('Anonymous authentication is not enabled in Firebase. Please enable it in the Firebase Console > Authentication > Sign-in methods, or use Email/Password sign-in.');
+      // Don't auto-proceed - let user see the error and try other methods
+      setLoading(false);
     } finally {
       setLoading(false);
     }
