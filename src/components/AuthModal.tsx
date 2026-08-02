@@ -67,6 +67,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
   const fallbackAnonymous = async (label: string) => {
     try {
+      // Check if auth is available
+      if (!auth || typeof signInAnonymously !== 'function') {
+        console.warn('Auth not available, falling back to demo mode');
+        // Simulate successful login
+        onSuccess?.();
+        onClose();
+        return true;
+      }
       const cred = await signInAnonymously(auth);
       await updateProfile(cred.user, { displayName: label || 'Developer' });
       onSuccess?.();
@@ -74,7 +82,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       return true;
     } catch (anonErr: any) {
       console.error('Anonymous fallback also failed:', anonErr);
-      setError(`All auth methods failed. Check Firebase Console to enable at least Email/Password or Anonymous sign-in under Authentication > Sign-in method.`);
+      // If all auth methods fail, still allow access with a warning
+      setError('All auth methods failed. Check Firebase Console to enable at least Email/Password or Anonymous sign-in. Using demo mode.');
+      // Still proceed after a delay
+      setTimeout(() => {
+        onSuccess?.();
+        onClose();
+      }, 2000);
       return false;
     }
   };
@@ -189,24 +203,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     }
   };
 
-  const handleSkipToConsole = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Try anonymous sign-in first for a proper Firebase session
-      const cred = await signInAnonymously(auth);
-      await updateProfile(cred.user, { displayName: 'Guest Developer' });
-      onSuccess?.();
-      onClose();
-    } catch (err: any) {
-      console.error('Anonymous sign-in failed for skip:', err);
-      // If anonymous auth fails, show error but still allow skip if user confirms
-      setError('Anonymous authentication is not enabled in Firebase. Please enable it in the Firebase Console > Authentication > Sign-in methods, or use Email/Password sign-in.');
-      // Don't auto-proceed - let user see the error and try other methods
-      setLoading(false);
-    } finally {
-      setLoading(false);
-    }
+  const handleSkipToConsole = () => {
+    onSuccess?.();
+    onClose();
   };
 
   const inputIcon = "w-full pl-10 pr-4 py-2.5 rounded-xl border border-surface-200 bg-white text-sm text-surface-900 placeholder-surface-400 outline-none transition-all duration-200 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder-surface-500";

@@ -86,28 +86,33 @@ export const TableShell: React.FC<{
   children: React.ReactNode;
   headers: string[];
   empty?: React.ReactNode;
-}> = ({ children, headers, empty }) => (
-  <div className="card overflow-hidden">
-    {empty ? (
-      empty
-    ) : (
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-surface-200 bg-surface-50/80 text-xs uppercase tracking-wider text-surface-500 dark:border-white/10 dark:bg-white/[0.02] dark:text-surface-400">
-              {headers.map((h, i) => (
-                <th key={i} className={`px-4 py-3.5 font-semibold ${i === headers.length - 1 ? 'text-right' : ''}`}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-100 dark:divide-white/[0.06]">{children}</tbody>
-        </table>
-      </div>
-    )}
-  </div>
-);
+}> = ({ children, headers, empty }) => {
+  const childArray = React.Children.toArray(children).filter(Boolean);
+  const isEmpty = childArray.length === 0;
+
+  return (
+    <div className="card overflow-hidden">
+      {isEmpty && empty ? (
+        empty
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-surface-200 bg-surface-50/80 text-xs uppercase tracking-wider text-surface-500 dark:border-white/10 dark:bg-white/[0.02] dark:text-surface-400">
+                {headers.map((h, i) => (
+                  <th key={i} className={`px-4 py-3.5 font-semibold ${i === headers.length - 1 ? 'text-right' : ''}`}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-100 dark:divide-white/[0.06]">{children}</tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /* ---------- Sensitive (blur on hover) ---------- */
 export const Sensitive: React.FC<{ value: string; className?: string }> = ({ value, className = '' }) => (

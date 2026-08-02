@@ -15,7 +15,7 @@ import { setRemoteVariable, deleteRemoteVariable } from '../lib/malikAuthService
 import { formatPKTDateTime } from '../lib/dateUtils';
 import { ActionMenu, ActionMenuItem } from './ActionMenu';
 import { ConfirmModal } from './ConfirmModal';
-import { PageHeader, EmptyState, TableShell, Sensitive, FieldLabel } from './ui';
+import { PageHeader, EmptyState, TableShell, Sensitive, FieldLabel, Card } from './ui';
 
 interface RemoteVariablesTabProps {
   appId: string;

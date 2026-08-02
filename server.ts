@@ -54,8 +54,7 @@ function parseExpiryToDate(expiryStr?: string | null): Date | null {
     if (ampm === 'PM' && hours < 12) hours += 12;
     if (ampm === 'AM' && hours === 12) hours = 0;
 
-    // Frontend stores PKT (UTC+5), so convert to UTC by subtracting 5 hours
-    const d = new Date(Date.UTC(year, month, day, hours - 5, minutes, seconds));
+    const d = new Date(year, month, day, hours, minutes, seconds);
     if (!isNaN(d.getTime())) return d;
   }
 
@@ -77,18 +76,7 @@ function parseExpiryToDate(expiryStr?: string | null): Date | null {
     if (!isNaN(utcDate.getTime())) return utcDate;
   }
 
-  // Pattern 3: YYYY-MM-DD (date-only, treat as end of day PKT)
-  const isoDateMatch = lower.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (isoDateMatch) {
-    const year = parseInt(isoDateMatch[1], 10);
-    const month = parseInt(isoDateMatch[2], 10) - 1;
-    const day = parseInt(isoDateMatch[3], 10);
-    // End of day PKT = 23:59 PKT = 18:59 UTC
-    const d = new Date(Date.UTC(year, month, day, 18, 59, 59));
-    if (!isNaN(d.getTime())) return d;
-  }
-
-  // Pattern 4: Standard Date string or ISO string
+  // Pattern 3: Standard Date string or ISO string
   const stdDate = new Date(expiryStr);
   if (!isNaN(stdDate.getTime())) {
     return stdDate;
@@ -105,40 +93,6 @@ function checkIsExpired(expiryStr?: string | null): boolean {
   const d = parseExpiryToDate(expiryStr);
   if (!d) return false;
   return d.getTime() <= Date.now();
-}
-
-/**
- * Auto-expire scan: marks all expired users and licenses in Firestore.
- */
-async function autoExpireScan() {
-  try {
-    let usersExpired = 0;
-    let licensesExpired = 0;
-
-    const usersSnap = await getDocs(collection(db, 'users'));
-    for (const userDoc of usersSnap.docs) {
-      const userData = userDoc.data();
-      if (userData.status !== 'Expired' && checkIsExpired(userData.expiry)) {
-        await updateDoc(doc(db, 'users', userDoc.id), { status: 'Expired' });
-        usersExpired++;
-      }
-    }
-
-    const licsSnap = await getDocs(collection(db, 'licenses'));
-    for (const licDoc of licsSnap.docs) {
-      const licData = licDoc.data();
-      if (licData.status !== 'Expired' && checkIsExpired(licData.expiry)) {
-        await updateDoc(doc(db, 'licenses', licDoc.id), { status: 'Expired' });
-        licensesExpired++;
-      }
-    }
-
-    if (usersExpired > 0 || licensesExpired > 0) {
-      console.log(`[Auto-Expire] Marked ${usersExpired} users and ${licensesExpired} licenses as expired.`);
-    }
-  } catch (err) {
-    console.error('[Auto-Expire] Scan error:', err);
-  }
 }
 
 async function startServer() {
@@ -159,6 +113,88 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Serve static SDK & Auth solution directories
+  app.use('/sdk', express.static(path.join(process.cwd(), 'sdk')));
+  app.use('/Auth', express.static(path.join(process.cwd(), 'Auth')));
+
+  // Endpoint to retrieve all C# WinForms SDK files for UI viewer and download
+  app.get('/api/v1/sdk/csharp-files', (req, res) => {
+    try {
+      const dirPath = fs.existsSync(path.join(process.cwd(), 'Auth', 'Auth'))
+        ? path.join(process.cwd(), 'Auth', 'Auth')
+        : path.join(process.cwd(), 'sdk', 'csharp-winforms');
+
+      if (!fs.existsSync(dirPath)) {
+        return res.status(404).json({ success: false, message: 'SDK directory not found.' });
+      }
+
+      const fileNames = fs.readdirSync(dirPath);
+      const textExtensions = ['.cs', '.csproj', '.config', '.json', '.xml', '.md'];
+      const files: any[] = [];
+
+      fileNames.forEach((fileName) => {
+        const filePath = path.join(dirPath, fileName);
+        const stat = fs.statSync(filePath);
+        if (stat.isFile()) {
+          const ext = path.extname(fileName).toLowerCase();
+          if (textExtensions.includes(ext) || fileName === 'packages.config') {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            files.push({
+              fileName,
+              path: `/Auth/Auth/${fileName}`,
+              content
+            });
+          }
+        }
+      });
+
+      return res.json({ success: true, files });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  // Serve static SDK & Auth solution directories
+  app.use('/sdk', express.static(path.join(process.cwd(), 'sdk')));
+  app.use('/Auth', express.static(path.join(process.cwd(), 'Auth')));
+
+  // Endpoint to retrieve all C# WinForms SDK files for UI viewer and download
+  app.get('/api/v1/sdk/csharp-files', (req, res) => {
+    try {
+      const dirPath = fs.existsSync(path.join(process.cwd(), 'Auth', 'Auth'))
+        ? path.join(process.cwd(), 'Auth', 'Auth')
+        : path.join(process.cwd(), 'sdk', 'csharp-winforms');
+
+      if (!fs.existsSync(dirPath)) {
+        return res.status(404).json({ success: false, message: 'SDK directory not found.' });
+      }
+
+      const fileNames = fs.readdirSync(dirPath);
+      const textExtensions = ['.cs', '.csproj', '.config', '.json', '.xml', '.md'];
+      const files: any[] = [];
+
+      fileNames.forEach((fileName) => {
+        const filePath = path.join(dirPath, fileName);
+        const stat = fs.statSync(filePath);
+        if (stat.isFile()) {
+          const ext = path.extname(fileName).toLowerCase();
+          if (textExtensions.includes(ext) || fileName === 'packages.config') {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            files.push({
+              fileName,
+              path: `/Auth/Auth/${fileName}`,
+              content
+            });
+          }
+        }
+      });
+
+      return res.json({ success: true, files });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
   // ============================================
   // MALIKAUTH SECURE CLIENT REST API ENDPOINTS
   // ============================================
@@ -166,48 +202,6 @@ async function startServer() {
   // Health Check
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', service: 'MalikAuth Security Platform' });
-  });
-
-  // Auto-Expire: Scan all users & licenses and mark expired ones in Firestore
-  app.get('/api/v1/admin/auto-expire', async (req, res) => {
-    try {
-      const results = { usersChecked: 0, usersExpired: 0, licensesChecked: 0, licensesExpired: 0, errors: [] as string[] };
-
-      // Scan all users across all apps
-      const usersSnap = await getDocs(collection(db, 'users'));
-      for (const userDoc of usersSnap.docs) {
-        const userData = userDoc.data();
-        results.usersChecked++;
-        try {
-          if (userData.status !== 'Expired' && checkIsExpired(userData.expiry)) {
-            await updateDoc(doc(db, 'users', userDoc.id), { status: 'Expired' });
-            results.usersExpired++;
-          }
-        } catch (e: any) {
-          results.errors.push(`User ${userDoc.id}: ${e.message}`);
-        }
-      }
-
-      // Scan all licenses across all apps
-      const licsSnap = await getDocs(collection(db, 'licenses'));
-      for (const licDoc of licsSnap.docs) {
-        const licData = licDoc.data();
-        results.licensesChecked++;
-        try {
-          if (licData.status !== 'Expired' && checkIsExpired(licData.expiry)) {
-            await updateDoc(doc(db, 'licenses', licDoc.id), { status: 'Expired' });
-            results.licensesExpired++;
-          }
-        } catch (e: any) {
-          results.errors.push(`License ${licDoc.id}: ${e.message}`);
-        }
-      }
-
-      return res.json({ success: true, ...results });
-    } catch (err: any) {
-      console.error('Auto-expire error:', err);
-      return res.status(500).json({ success: false, message: err.message });
-    }
   });
 
   // Client Initialization: Verification of App ID & Secret
@@ -368,7 +362,6 @@ async function startServer() {
       const newUser = {
         appId,
         username: cleanUsername,
-        email: cleanUsername.includes('@') ? cleanUsername : `${cleanUsername}@malikauth.local`,
         password: String(password).trim(),
         licenseKey: cleanKey,
         hwid: userHwid,
@@ -414,8 +407,7 @@ async function startServer() {
         username: cleanUsername,
         role: 'Premium Member',
         sessionId,
-        hwid: userHwid,
-        expiry: keyData.expiry || null
+        hwid: userHwid
       });
     } catch (err: any) {
       console.error('API Register Error:', err);
@@ -537,12 +529,8 @@ async function startServer() {
         createdAt: now
       });
 
-      // Update user lastSeen and backfill email field for old users
-      const updateData: any = { lastSeen: now, ipAddress: clientIp };
-      if (!userData.email) {
-        updateData.email = `${cleanUsername}@malikauth.local`;
-      }
-      await updateDoc(doc(db, 'users', userDoc.id), updateData);
+      // Update user lastSeen
+      await updateDoc(doc(db, 'users', userDoc.id), { lastSeen: now, ipAddress: clientIp });
 
       // Log Login Activity
       const logDocRef = doc(collection(db, 'activity_logs'));
@@ -561,8 +549,7 @@ async function startServer() {
         username: cleanUsername,
         role: userData.role || 'Active Member',
         sessionId,
-        hwid: clientHwid,
-        expiry: userData.expiry || null
+        hwid: clientHwid
       });
     } catch (err: any) {
       console.error('API Login Error:', err);
@@ -666,54 +653,14 @@ async function startServer() {
         if (!userSnap.empty) {
           const userDoc = userSnap.docs[0];
           const userData = userDoc.data();
-
-          if (userData.status === 'Banned') {
-            if (sessionData.status !== 'Terminated') {
-              await updateDoc(doc(db, 'sessions', sessionDoc.id), { status: 'Terminated' });
-            }
-            return res.json({ active: false, status: 'Terminated' });
-          }
-
-          if (userData.status === 'Expired' || checkIsExpired(userData.expiry)) {
-            if (userData.status !== 'Expired') {
+          if (userData.status === 'Banned' || userData.status === 'Expired' || checkIsExpired(userData.expiry)) {
+            if (userData.status !== 'Expired' && checkIsExpired(userData.expiry)) {
               await updateDoc(doc(db, 'users', userDoc.id), { status: 'Expired' });
             }
             if (sessionData.status !== 'Terminated') {
               await updateDoc(doc(db, 'sessions', sessionDoc.id), { status: 'Terminated' });
             }
-            return res.json({ active: false, status: 'Expired' });
-          }
-
-          // Also check linked license key expiry
-          if (userData.licenseKey && userData.licenseKey !== 'CUSTOM_USER_AUTH') {
-            const keyQuery = query(
-              collection(db, 'licenses'),
-              where('appId', '==', appId),
-              where('key', '==', userData.licenseKey)
-            );
-            const keySnap = await getDocs(keyQuery);
-            if (!keySnap.empty) {
-              const keyDoc = keySnap.docs[0];
-              const keyData = keyDoc.data();
-              if (keyData.status === 'Banned') {
-                if (sessionData.status !== 'Terminated') {
-                  await updateDoc(doc(db, 'sessions', sessionDoc.id), { status: 'Terminated' });
-                }
-                return res.json({ active: false, status: 'Terminated' });
-              }
-              if (keyData.status === 'Expired' || checkIsExpired(keyData.expiry)) {
-                if (userData.status !== 'Expired') {
-                  await updateDoc(doc(db, 'users', userDoc.id), { status: 'Expired' });
-                }
-                if (keyData.status !== 'Expired') {
-                  await updateDoc(doc(db, 'licenses', keyDoc.id), { status: 'Expired' });
-                }
-                if (sessionData.status !== 'Terminated') {
-                  await updateDoc(doc(db, 'sessions', sessionDoc.id), { status: 'Terminated' });
-                }
-                return res.json({ active: false, status: 'Expired' });
-              }
-            }
+            return res.json({ active: false, status: 'Terminated' });
           }
         }
       }
@@ -724,8 +671,7 @@ async function startServer() {
 
       return res.json({ active: true, status: 'Active' });
     } catch (err) {
-      console.error('Heartbeat check failed:', err);
-      return res.json({ active: false, status: 'Error' });
+      return res.json({ active: true, status: 'Active' });
     }
   });
 
@@ -744,11 +690,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', async () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`MalikAuth Server running on http://0.0.0.0:${PORT}`);
-    // Run auto-expire scan on startup and every 5 minutes
-    await autoExpireScan();
-    setInterval(autoExpireScan, 5 * 60 * 1000);
   });
 }
 

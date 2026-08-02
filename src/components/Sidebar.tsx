@@ -54,6 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: 'manage_apps', label: 'Applications', icon: AppWindow },
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'csharp_sdk', label: 'C# WinForms SDK', icon: Code2 },
     { id: 'users', label: 'End Users', icon: Users },
     { id: 'licenses', label: 'License Keys', icon: Key },
     { id: 'sessions', label: 'Live Sessions', icon: Radio },
