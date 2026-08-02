@@ -1,0 +1,7 @@
+{
+  "name": "MalikAuth",
+  "description": "KeyAuth-style licensing, authentication, role management, and remote C# SDK synchronization platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

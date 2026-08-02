@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "MalikApp": {
+      "title": "MalikApp",
+      "description": "Application configuration",
+      "type": "object",
+      "properties": {
+        "appId": { "type": "string", "pattern": "^[a-zA-Z0-9]{10}$" },
+        "name": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "Moderator", "User"] },
+        "appSecret": { "type": "string" },
+        "encryptionKey": { "type": "string" },
+        "version": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Maintenance", "Disabled"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["appId", "name", "ownerId"]
+    },
+    "MalikLicense": {
+      "title": "MalikLicense",
+      "description": "User license",
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "appId": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Unused", "Terminated"] }
+      },
+      "required": ["key", "appId", "status"]
+    }
+  },
+  "firestore": {
+    "/applications/{appId}": {
+      "schema": { "$ref": "MalikApp" },
+      "description": "Applications configuration"
+    },
+    "/licenses/{licenseId}": {
+      "schema": { "$ref": "MalikLicense" },
+      "description": "Application licenses"
+    },
+    "/crash_reports/{reportId}": {
+      "description": "SDK crash reports"
+    },
+    "/analytics_logs/{logId}": {
+      "description": "Usage analytics logs"
+    }
+  }
+}

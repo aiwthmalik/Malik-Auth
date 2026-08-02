@@ -1,0 +1,45 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Applications collection
+    match /applications/{appId} {
+      allow read, write: if true;
+    }
+
+    // Licenses collection
+    match /licenses/{licenseId} {
+      allow read, write: if true;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // Live Sessions collection
+    match /sessions/{sessionId} {
+      allow read, write: if true;
+    }
+
+    // Remote Variables collection
+    match /remote_variables/{varId} {
+      allow read, write: if true;
+    }
+
+    // Activity Logs collection
+    match /activity_logs/{logId} {
+      allow read, write: if true;
+    }
+
+    // Crash Reports collection
+    match /crash_reports/{reportId} {
+      allow read, write: if true;
+    }
+    
+    // Analytics Logs collection
+    match /analytics_logs/{logId} {
+      allow read, write: if true;
+    }
+  }
+}
+
