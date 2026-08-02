@@ -78,7 +78,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({ items, align = 'right' }
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none"
+        className="p-1.5 rounded-lg text-surface-400 hover:text-surface-700 hover:bg-surface-100 dark:text-surface-400 dark:hover:text-white dark:hover:bg-white/10 transition-colors focus:outline-none"
         title="More Actions"
       >
         <MoreVertical className="w-4 h-4" />
@@ -93,17 +93,17 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({ items, align = 'right' }
             left: `${coords.left}px`,
             zIndex: 9999,
           }}
-          className="w-44 rounded-xl bg-white border border-slate-200 shadow-xl ring-1 ring-black/5 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-100"
+          className="w-44 rounded-xl bg-white border border-surface-200 shadow-xl ring-1 ring-black/5 overflow-hidden py-1 animate-scale-in dark:bg-[#15151f] dark:border-white/10 dark:ring-white/5"
         >
           {items.map((item, index) => {
             const Icon = item.icon;
-            let textClass = 'text-slate-700 hover:bg-slate-50';
+            let textClass = 'text-surface-700 hover:bg-surface-50 dark:text-surface-200 dark:hover:bg-white/[0.06]';
             if (item.variant === 'danger') {
-              textClass = 'text-rose-600 hover:bg-rose-50';
+              textClass = 'text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-500/10';
             } else if (item.variant === 'success') {
-              textClass = 'text-emerald-700 hover:bg-emerald-50';
+              textClass = 'text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-500/10';
             } else if (item.variant === 'indigo') {
-              textClass = 'text-indigo-700 hover:bg-indigo-50';
+              textClass = 'text-brand-700 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/10';
             }
 
             return (
@@ -115,7 +115,7 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({ items, align = 'right' }
                   setIsOpen(false);
                   item.onClick();
                 }}
-                className={`w-full text-left px-3.5 py-2 text-xs font-semibold flex items-center space-x-2 transition-colors disabled:opacity-50 ${textClass}`}
+                className={`w-full text-left px-3.5 py-2 text-xs font-semibold flex items-center gap-2 transition-colors disabled:opacity-50 ${textClass}`}
               >
                 {Icon && <Icon className="w-4 h-4 shrink-0" />}
                 <span>{item.label}</span>

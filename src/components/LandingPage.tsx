@@ -10,13 +10,19 @@ import {
   CheckCircle2,
   ArrowRight,
   Terminal,
-  Server,
   Key,
   ShieldAlert,
   LogOut,
   Sparkles,
-  Check
+  Check,
+  Sun,
+  Moon,
+  Menu,
+  X,
+  Github,
+  Globe
 } from 'lucide-react';
+import { Theme } from '../lib/useTheme';
 
 interface LandingPageProps {
   onOpenAuthModal: () => void;
@@ -24,6 +30,8 @@ interface LandingPageProps {
   isLoggedIn: boolean;
   userEmail?: string | null;
   onSignOut?: () => void;
+  theme?: Theme;
+  onToggleTheme?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -32,11 +40,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   isLoggedIn,
   userEmail,
   onSignOut,
+  theme,
+  onToggleTheme,
 }) => {
   const [activeCodeTab, setActiveCodeTab] = useState<'initialize' | 'validate' | 'hwid' | 'remote'>('initialize');
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const codeSnippets: Record<string, string> = {
-    initialize: `// 1. Initialize MalikAuth Security Client (REST API / SDK)
+    initialize: `// 1. Initialize MalikAuth Security Client
 import { MalikAuthClient } from '@malikauth/client';
 
 const authApp = new MalikAuthClient({
@@ -57,375 +68,445 @@ const licenseKey = "MALIK-X9A2-K7L1-B4M9-Q2W8";
 const result = await authApp.license.validateKey(licenseKey);
 
 if (result.success) {
-  console.log(\`Welcome back, \${result.user.username}! Role: \${result.user.role}\`);
-  // Proceed to protected main application flow
+  console.log(\`Welcome back, \${result.user.username}!\`);
   startProtectedSession(result.sessionToken);
 } else {
   console.error("Authentication error:", result.message);
 }`,
     hwid: `// 3. Hardware ID (HWID) Check & Machine Locking
-// Automatically generates SHA-256 fingerprint from hardware UUID
+// Generates SHA-256 fingerprint from hardware UUID
 const currentHwid = await authApp.security.getHardwareFingerprint();
 
 if (result.isHwidMismatch) {
-  console.warn(
-    "HWID mismatch detected! Your license is locked to another computer. " +
-    "Please request an HWID reset in the MalikAuth Dashboard."
-  );
+  console.warn("HWID mismatch detected! License locked to another PC.");
   process.exit(0);
 }`,
     remote: `// 4. Fetch Remote Encrypted Variables (Memory Guarded)
-// Pull remote variables without shipping patch updates
 const downloadUrl = authApp.remoteVars.getString("DOWNLOAD_URL");
 const memOffset   = authApp.remoteVars.getEncryptedString("OFFSET_LOCAL_PLAYER");
 
 console.log("Remote sync successful. Target offset:", memOffset);
-// Automatically decrypted in memory using AES-256 GCM`
+// Auto-decrypted in memory using AES-256 GCM`,
   };
 
+  const codeTabs = [
+    { id: 'initialize' as const, label: 'Initialize' },
+    { id: 'validate' as const, label: 'Validate' },
+    { id: 'hwid' as const, label: 'HWID Lock' },
+    { id: 'remote' as const, label: 'Remote Sync' },
+  ];
+
+  const features = [
+    {
+      icon: Lock,
+      color: 'text-brand-500 bg-brand-500/10 border-brand-500/20',
+      title: 'AES-256 Memory Encryption',
+      desc: 'Strings and license tokens are decrypted in memory using AES-256 GCM only upon validation, defeating static string dumpers and reverse engineering.',
+    },
+    {
+      icon: Cpu,
+      color: 'text-violet-500 bg-violet-500/10 border-violet-500/20',
+      title: 'Hardware Fingerprint Binding',
+      desc: 'Each license is automatically locked to the physical machine fingerprint. Users cannot share keys across different computers.',
+    },
+    {
+      icon: Zap,
+      color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+      title: 'Live Remote Variable Sync',
+      desc: 'Update configuration parameters, download URLs, or emergency maintenance banners globally without shipping a new build.',
+    },
+    {
+      icon: Radio,
+      color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+      title: 'Real-Time Session Revocation',
+      desc: 'Monitor live heartbeat pings from active clients. Revoke sessions or ban suspicious users instantly from the console.',
+    },
+    {
+      icon: ShieldAlert,
+      color: 'text-cyan-500 bg-cyan-500/10 border-cyan-500/20',
+      title: 'Anti-Tamper Protections',
+      desc: 'Built-in validation detects common analysis tools and rejects initialization immediately to safeguard your IP.',
+    },
+    {
+      icon: FileCode,
+      color: 'text-sky-500 bg-sky-500/10 border-sky-500/20',
+      title: 'Role-Based Tier Access',
+      desc: 'Assign license keys to Basic, VIP, or Enterprise tiers. Restrict features and remote variables automatically by rank.',
+    },
+  ];
+
+  const pricing = [
+    {
+      name: 'Developer Starter',
+      tagline: 'Perfect for developers & prototypes',
+      price: '$0',
+      period: '/ forever',
+      featured: false,
+      cta: 'Get Started Free',
+      features: ['Up to 50 active license keys', 'Hardware fingerprint locking', 'AES-256 memory encryption', '1 Application project'],
+    },
+    {
+      name: 'Commercial Pro',
+      tagline: 'For commercial software & premium tools',
+      price: '$29',
+      period: '/ month',
+      featured: true,
+      cta: 'Start Pro Trial',
+      features: ['Up to 5,000 active license keys', 'Unlimited Remote Sync Variables', 'Live Session heartbeat revocation', 'Full Audit Logs & Forensics', 'Up to 10 Application projects'],
+    },
+    {
+      name: 'Enterprise & Custom',
+      tagline: 'Dedicated cloud hosting & custom SDK',
+      price: '$99',
+      period: '/ month',
+      featured: false,
+      cta: 'Contact Enterprise',
+      features: ['Unlimited License Keys & Users', 'Unlimited Application projects', 'Custom obfuscated SDK wrapper', 'Priority 24/7 developer support'],
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-white text-slate-800 flex flex-col selection:bg-indigo-500 selection:text-white">
-      {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-indigo-600 shadow-sm shadow-indigo-600/20">
-              <ShieldCheck className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-surface-50 text-surface-900 dark:bg-[#0b0b12] dark:text-surface-100">
+      {/* Top Navigation */}
+      <header className="sticky top-0 z-50 border-b border-surface-200/70 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b12]/80">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-600 shadow-md shadow-brand-500/25">
+              <ShieldCheck className="h-6 w-6 text-white" />
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="font-bold text-lg text-slate-900 tracking-tight">MalikAuth</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-black tracking-tight">MalikAuth</span>
+              <span className="rounded-full border border-brand-500/25 bg-brand-500/10 px-2.5 py-0.5 text-xs font-semibold text-brand-600 dark:text-brand-300">
                 Security Platform
               </span>
             </div>
           </div>
 
-          <nav className="hidden md:flex items-center space-x-8 text-sm font-medium text-slate-600">
-            <a href="#features" className="hover:text-indigo-600 transition-colors">Features</a>
-            <a href="#security" className="hover:text-indigo-600 transition-colors">Security Engine</a>
-            <a href="#pricing" className="hover:text-indigo-600 transition-colors">Pricing</a>
+          <nav className="hidden items-center gap-8 text-sm font-medium text-surface-600 dark:text-surface-300 md:flex">
+            <a href="#features" className="transition-colors hover:text-brand-500">Features</a>
+            <a href="#security" className="transition-colors hover:text-brand-500">Security Engine</a>
+            <a href="#pricing" className="transition-colors hover:text-brand-500">Pricing</a>
           </nav>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={onToggleTheme}
+              title="Toggle theme"
+              className="rounded-xl border border-surface-200 bg-white p-2 text-surface-500 transition-colors hover:text-surface-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-surface-300 dark:hover:text-white"
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+
             {isLoggedIn ? (
-              <div className="flex items-center space-x-3">
-                <span className="hidden sm:inline-block text-xs font-medium text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-lg">
+              <div className="hidden items-center gap-2.5 sm:flex">
+                <span className="rounded-lg border border-surface-200 bg-surface-100 px-3 py-1.5 text-xs font-medium text-surface-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-surface-300">
                   {userEmail || 'Authenticated Developer'}
                 </span>
-                <button
-                  onClick={onLaunchConsole}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/20 transition-all flex items-center space-x-1.5"
-                >
-                  <span>Developer Console</span>
-                  <ArrowRight className="w-4 h-4" />
+                <button onClick={onLaunchConsole} className="btn-primary">
+                  Developer Console
+                  <ArrowRight className="h-4 w-4" />
                 </button>
                 {onSignOut && (
                   <button
                     onClick={onSignOut}
                     title="Sign Out"
-                    className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 rounded-xl border border-slate-200 transition-colors"
+                    className="rounded-xl border border-surface-200 bg-white p-2 text-surface-500 transition-colors hover:text-rose-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-surface-300"
                   >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="h-4 w-4" />
                   </button>
                 )}
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
-                <button
-                  onClick={onOpenAuthModal}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl border border-slate-200 transition-colors"
-                >
+              <div className="hidden items-center gap-2 sm:flex">
+                <button onClick={onOpenAuthModal} className="btn-ghost">
                   Sign In
                 </button>
-                <button
-                  onClick={onOpenAuthModal}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm shadow-indigo-600/25 transition-all flex items-center space-x-1.5"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  <span>Get Started</span>
+                <button onClick={onOpenAuthModal} className="btn-primary">
+                  Get Started
                 </button>
               </div>
             )}
+
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="rounded-xl border border-surface-200 bg-white p-2 text-surface-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-surface-300 md:hidden"
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
           </div>
         </div>
+
+        {mobileOpen && (
+          <div className="border-t border-surface-200 bg-white px-4 py-4 dark:border-white/10 dark:bg-[#0d0d16] md:hidden">
+            <div className="flex flex-col gap-2">
+              <a href="#features" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface-100 dark:hover:bg-white/5">Features</a>
+              <a href="#security" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface-100 dark:hover:bg-white/5">Security Engine</a>
+              <a href="#pricing" onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-surface-100 dark:hover:bg-white/5">Pricing</a>
+              <div className="mt-2 flex gap-2">
+                {isLoggedIn ? (
+                  <button onClick={onLaunchConsole} className="btn-primary flex-1">Developer Console</button>
+                ) : (
+                  <>
+                    <button onClick={onOpenAuthModal} className="btn-ghost flex-1">Sign In</button>
+                    <button onClick={onOpenAuthModal} className="btn-primary flex-1">Get Started</button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-16 pb-24 lg:pt-24 lg:pb-32 bg-gradient-to-b from-white via-indigo-50/30 to-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold mb-6">
-            <ShieldCheck className="w-4 h-4 text-indigo-600" />
-            <span>MalikAuth Software Licensing & Memory Security Engine v2.5</span>
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid" />
+        <div className="absolute -top-40 left-1/2 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-gradient-to-r from-brand-500/20 via-violet-500/20 to-cyan-500/20 blur-3xl" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-24 pt-16 text-center sm:px-6 lg:px-8 lg:pt-24">
+          <div className="animate-in-up inline-flex items-center gap-2 rounded-full border border-brand-500/25 bg-brand-500/10 px-3.5 py-1.5 text-xs font-semibold text-brand-600 dark:text-brand-300">
+            <ShieldCheck className="h-4 w-4" />
+            MalikAuth Software Licensing & Memory Security Engine v2.5
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-black text-slate-900 tracking-tight max-w-4xl mx-auto leading-tight">
-            Enterprise Software Licensing & <br className="hidden sm:inline" />
-            <span className="text-indigo-600">
-              Hardware Security Platform
-            </span>
+          <h1 className="animate-in-up mx-auto mt-6 max-w-4xl text-4xl font-black leading-tight tracking-tight sm:text-6xl">
+            Enterprise Software Licensing &{' '}
+            <span className="text-gradient">Hardware Security</span>
           </h1>
 
-          <p className="mt-6 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
-            Protect your software applications with AES-256 memory encryption,
-            hardware ID locking, live session revocation, and instant remote variable synchronization.
+          <p className="animate-in-up mx-auto mt-6 max-w-2xl text-base leading-relaxed text-surface-600 dark:text-surface-300 sm:text-lg">
+            Protect your software with AES-256 memory encryption, hardware ID locking,
+            live session revocation, and instant remote variable synchronization.
           </p>
 
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="animate-in-up mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <button
               onClick={isLoggedIn ? onLaunchConsole : onOpenAuthModal}
-              className="w-full sm:w-auto px-7 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center space-x-2 text-base"
+              className="btn-primary w-full px-7 py-3.5 text-base sm:w-auto"
             >
-              <span>{isLoggedIn ? 'Open Developer Console' : 'Launch Free Console'}</span>
-              <ArrowRight className="w-5 h-5" />
+              {isLoggedIn ? 'Open Developer Console' : 'Launch Free Console'}
+              <ArrowRight className="h-5 w-5" />
             </button>
             <a
               href="#features"
-              className="w-full sm:w-auto px-7 py-3.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-300 transition-colors flex items-center justify-center space-x-2 text-base shadow-xs"
+              className="btn-ghost w-full px-7 py-3.5 text-base sm:w-auto"
             >
-              <Code2 className="w-5 h-5 text-indigo-600" />
-              <span>Explore Security Features</span>
+              <Code2 className="h-5 w-5 text-brand-500" />
+              Explore Security Features
             </a>
           </div>
 
-          {/* Key Metrics Banner */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center shadow-xs">
-              <div className="text-2xl font-bold text-slate-900">AES-256 GCM</div>
-              <div className="text-xs text-slate-500 mt-1">Memory Stream Encryption</div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center shadow-xs">
-              <div className="text-2xl font-bold text-indigo-600">&lt; 15ms</div>
-              <div className="text-xs text-slate-500 mt-1">API Verification Latency</div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center shadow-xs">
-              <div className="text-2xl font-bold text-emerald-600">100% HWID</div>
-              <div className="text-xs text-slate-500 mt-1">Hardware Fingerprint Lock</div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 text-center shadow-xs">
-              <div className="text-2xl font-bold text-violet-600">Zero Patch</div>
-              <div className="text-xs text-slate-500 mt-1">Live Remote Variable Sync</div>
-            </div>
+          {/* Metrics */}
+          <div className="animate-in-up mx-auto mt-16 grid max-w-4xl grid-cols-2 gap-4 md:grid-cols-4">
+            {[
+              { value: 'AES-256', label: 'GCM Memory Encryption', color: 'text-surface-900 dark:text-white' },
+              { value: '< 15ms', label: 'API Verification Latency', color: 'text-brand-500' },
+              { value: '100%', label: 'Hardware Fingerprint Lock', color: 'text-emerald-500' },
+              { value: 'Zero Patch', label: 'Live Remote Variable Sync', color: 'text-violet-500' },
+            ].map((m) => (
+              <div key={m.label} className="card p-5 text-center">
+                <div className={`text-2xl font-extrabold ${m.color}`}>{m.value}</div>
+                <div className="mt-1 text-xs text-surface-500 dark:text-surface-400">{m.label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Feature Breakdown Grid */}
-      <section id="features" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold text-slate-900">Built For Software Security & Licensing</h2>
-            <p className="text-slate-600 mt-2 text-sm">
+      {/* Features */}
+      <section id="features" className="relative py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto mb-16 max-w-3xl text-center">
+            <span className="text-xs font-bold uppercase tracking-widest text-brand-500">Features</span>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Built For Software Security & Licensing</h2>
+            <p className="mt-3 text-sm text-surface-600 dark:text-surface-400">
               Stop unauthorized distribution, account sharing, and memory analysis with a hardened licensing architecture.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl hover:border-indigo-300 transition-all shadow-xs">
-              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 border border-indigo-100">
-                <Lock className="w-6 h-6" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {features.map((f) => (
+              <div
+                key={f.title}
+                className="card group p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand-400/40 hover:shadow-xl hover:shadow-brand-500/5"
+              >
+                <div className={`mb-4 flex h-12 w-12 items-center justify-center rounded-xl border ${f.color}`}>
+                  <f.icon className="h-6 w-6" />
+                </div>
+                <h3 className="text-lg font-bold tracking-tight">{f.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-surface-600 dark:text-surface-400">{f.desc}</p>
               </div>
-              <h3 className="text-lg font-bold text-slate-900">AES-256 Memory Encryption</h3>
-              <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                Strings and license tokens are decrypted in memory using AES-256 GCM only upon validation, preventing static string dumpers and reverse engineering.
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Security Engine / Code */}
+      <section id="security" className="relative py-24">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-brand-500/[0.04] to-transparent" />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-widest text-brand-500">Security Engine</span>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+                Drop-in protection for your <span className="text-gradient">desktop applications</span>
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-surface-600 dark:text-surface-400">
+                Integrate the MalikAuth SDK in minutes. Initialize the security engine, validate license keys,
+                lock to hardware, and sync encrypted remote variables — all with a few lines of code.
               </p>
+
+              <div className="mt-8 space-y-4">
+                {[
+                  { icon: Terminal, text: 'Zero external dependencies in the C# SDK' },
+                  { icon: Globe, text: 'Works with C#, C++, Python, and Web clients' },
+                  { icon: ShieldCheck, text: 'Offline fail-safe mode keeps clients running' },
+                ].map((item) => (
+                  <div key={item.text} className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-brand-500/20 bg-brand-500/10 text-brand-500">
+                      <item.icon className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-medium text-surface-700 dark:text-surface-200">{item.text}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl hover:border-indigo-300 transition-all shadow-xs">
-              <div className="w-12 h-12 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center mb-4 border border-violet-100">
-                <Cpu className="w-6 h-6" />
+            {/* Code Window */}
+            <div className="overflow-hidden rounded-2xl border border-surface-200 bg-[#0d0d16] shadow-2xl shadow-black/30 dark:border-white/10">
+              <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-full bg-rose-500" />
+                  <span className="h-3 w-3 rounded-full bg-amber-500" />
+                  <span className="h-3 w-3 rounded-full bg-emerald-500" />
+                  <span className="ml-2 font-mono text-xs text-surface-400">client.ts</span>
+                </div>
+                <span className="font-mono text-[10px] text-surface-500">MalikAuth SDK</span>
               </div>
-              <h3 className="text-lg font-bold text-slate-900">Hardware Fingerprint Binding</h3>
-              <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                Each license is automatically locked to the user&apos;s physical machine fingerprint. Users cannot share keys across different computers.
-              </p>
-            </div>
 
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl hover:border-indigo-300 transition-all shadow-xs">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 border border-emerald-100">
-                <Zap className="w-6 h-6" />
+              <div className="flex gap-1 border-b border-white/10 px-3 pt-3">
+                {codeTabs.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveCodeTab(t.id)}
+                    className={`rounded-t-lg px-3 py-2 font-mono text-xs transition-colors ${
+                      activeCodeTab === t.id
+                        ? 'bg-white/[0.06] text-brand-300'
+                        : 'text-surface-500 hover:text-surface-300'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
               </div>
-              <h3 className="text-lg font-bold text-slate-900">Live Remote Variable Sync</h3>
-              <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                Update configuration parameters, download URLs, or enable emergency maintenance banners globally without releasing a new application build.
-              </p>
-            </div>
 
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl hover:border-indigo-300 transition-all shadow-xs">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 border border-amber-100">
-                <Radio className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">Real-Time Session Revocation</h3>
-              <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                Monitor live heartbeat pings from active software clients. Revoke sessions or ban suspicious users instantly from your developer console.
-              </p>
-            </div>
-
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl hover:border-indigo-300 transition-all shadow-xs">
-              <div className="w-12 h-12 rounded-xl bg-cyan-50 text-cyan-600 flex items-center justify-center mb-4 border border-cyan-100">
-                <ShieldAlert className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">Anti-Tamper Protections</h3>
-              <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                Built-in validation checks detect common analysis tools and reject initialization immediately to safeguard your intellectual property.
-              </p>
-            </div>
-
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl hover:border-indigo-300 transition-all shadow-xs">
-              <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-4 border border-indigo-100">
-                <FileCode className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">Role-Based Tier Access</h3>
-              <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                Assign license keys to Basic, VIP, or Enterprise tiers. Restrict specific application features or remote variables automatically based on user rank.
-              </p>
+              <pre className="overflow-x-auto p-5 font-mono text-xs leading-relaxed text-surface-200">
+                <code>{codeSnippets[activeCodeTab]}</code>
+              </pre>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Pricing Comparison Section */}
-      <section id="pricing" className="py-20 bg-slate-50 border-t border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl font-bold text-slate-900">Simple, Transparent Developer Tiers</h2>
-            <p className="text-slate-600 mt-2 text-sm">
+      {/* Pricing */}
+      <section id="pricing" className="py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto mb-16 max-w-3xl text-center">
+            <span className="text-xs font-bold uppercase tracking-widest text-brand-500">Pricing</span>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Simple, Transparent Developer Tiers</h2>
+            <p className="mt-3 text-sm text-surface-600 dark:text-surface-400">
               Start building for free. Scale when your software reaches commercial distribution.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Free Developer */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between shadow-xs">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Developer Starter</h3>
-                <p className="text-xs text-slate-500 mt-1">Perfect for developers & prototypes</p>
-                <div className="mt-6 flex items-baseline">
-                  <span className="text-3xl font-bold text-slate-900">$0</span>
-                  <span className="text-xs text-slate-500 ml-1">/ forever</span>
-                </div>
-                <ul className="mt-6 space-y-3 text-xs text-slate-600">
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Up to 50 active license keys</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Hardware fingerprint locking</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>AES-256 memory stream encryption</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>1 Application project</span>
-                  </li>
-                </ul>
-              </div>
-              <button
-                onClick={onOpenAuthModal}
-                className="mt-8 w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl text-xs transition-colors"
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 md:grid-cols-3">
+            {pricing.map((p) => (
+              <div
+                key={p.name}
+                className={`card relative flex flex-col justify-between p-6 transition-all duration-300 ${
+                  p.featured
+                    ? 'border-2 border-brand-500 shadow-xl shadow-brand-500/10'
+                    : 'hover:-translate-y-1 hover:shadow-lg'
+                }`}
               >
-                Get Started Free
-              </button>
-            </div>
+                {p.featured && (
+                  <span className="absolute -top-3 right-6 rounded-full bg-gradient-to-r from-brand-500 to-violet-600 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+                    Most Popular
+                  </span>
+                )}
+                <div>
+                  <h3 className="text-lg font-bold tracking-tight">{p.name}</h3>
+                  <p className="mt-1 text-xs text-surface-500 dark:text-surface-400">{p.tagline}</p>
+                  <div className="mt-6 flex items-baseline">
+                    <span className="text-3xl font-extrabold">{p.price}</span>
+                    <span className="ml-1 text-xs text-surface-500 dark:text-surface-400">{p.period}</span>
+                  </div>
+                  <ul className="mt-6 space-y-3 text-xs text-surface-600 dark:text-surface-300">
+                    {p.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 shrink-0 text-brand-500" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  onClick={onOpenAuthModal}
+                  className={`mt-8 w-full ${p.featured ? 'btn-primary' : 'btn-ghost'}`}
+                >
+                  {p.cta}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-            {/* Pro Tier (Featured) */}
-            <div className="bg-white border-2 border-indigo-600 rounded-2xl p-6 flex flex-col justify-between relative shadow-lg shadow-indigo-600/5">
-              <div className="absolute -top-3 right-6 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                Most Popular
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Commercial Pro</h3>
-                <p className="text-xs text-slate-500 mt-1">For commercial software & premium tools</p>
-                <div className="mt-6 flex items-baseline">
-                  <span className="text-3xl font-bold text-slate-900">$29</span>
-                  <span className="text-xs text-slate-500 ml-1">/ month</span>
-                </div>
-                <ul className="mt-6 space-y-3 text-xs text-slate-600">
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Up to 5,000 active license keys</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Unlimited Remote Sync Variables</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Live Session heartbeat revocation</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Full Audit Logs & Forensics</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Up to 10 Application projects</span>
-                  </li>
-                </ul>
-              </div>
-              <button
-                onClick={onOpenAuthModal}
-                className="mt-8 w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs transition-colors shadow-sm shadow-indigo-600/20"
-              >
-                Start Pro Trial
-              </button>
-            </div>
-
-            {/* Enterprise Tier */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between shadow-xs">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Enterprise & Custom</h3>
-                <p className="text-xs text-slate-500 mt-1">Dedicated cloud hosting & custom SDK builds</p>
-                <div className="mt-6 flex items-baseline">
-                  <span className="text-3xl font-bold text-slate-900">$99</span>
-                  <span className="text-xs text-slate-500 ml-1">/ month</span>
-                </div>
-                <ul className="mt-6 space-y-3 text-xs text-slate-600">
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Unlimited License Keys & Users</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Unlimited Application projects</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Custom obfuscated SDK wrapper</span>
-                  </li>
-                  <li className="flex items-center space-x-2">
-                    <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-                    <span>Priority 24/7 developer support</span>
-                  </li>
-                </ul>
-              </div>
-              <button
-                onClick={onOpenAuthModal}
-                className="mt-8 w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold rounded-xl text-xs transition-colors"
-              >
-                Contact Enterprise
-              </button>
-            </div>
+      {/* CTA */}
+      <section className="relative overflow-hidden py-24">
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-600 via-violet-600 to-brand-800" />
+        <div className="absolute inset-0 bg-grid opacity-20" />
+        <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Ready to secure your software?
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-sm text-white/80">
+            Join developers who protect their applications with enterprise-grade licensing and hardware security.
+          </p>
+          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <button
+              onClick={isLoggedIn ? onLaunchConsole : onOpenAuthModal}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-7 py-3.5 text-base font-bold text-brand-700 shadow-lg transition-all hover:bg-surface-50 active:scale-[0.98]"
+            >
+              {isLoggedIn ? 'Open Developer Console' : 'Launch Free Console'}
+              <ArrowRight className="h-5 w-5" />
+            </button>
+            <a
+              href="#features"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 px-7 py-3.5 text-base font-semibold text-white transition-colors hover:bg-white/10"
+            >
+              <Check className="h-5 w-5" />
+              View Features
+            </a>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-8 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-5 h-5 text-indigo-600" />
-            <span className="font-bold text-slate-900">MalikAuth Security Platform</span>
-            <span className="text-slate-300">•</span>
+      <footer className="border-t border-surface-200 bg-white/60 py-8 text-xs text-surface-500 backdrop-blur dark:border-white/10 dark:bg-white/[0.02] dark:text-surface-400">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-brand-500" />
+            <span className="font-bold text-surface-900 dark:text-white">MalikAuth Security Platform</span>
+            <span className="text-surface-300 dark:text-surface-600">•</span>
             <span>Real-Time Licensing & Hardware Security</span>
           </div>
-          <div className="flex items-center space-x-6">
-            <a href="#features" className="hover:text-indigo-600 transition-colors">Features</a>
-            <a href="#api-preview" className="hover:text-indigo-600 transition-colors">SDK</a>
-            <a href="#pricing" className="hover:text-indigo-600 transition-colors">Pricing</a>
-            <span className="text-emerald-600 font-semibold">Firebase Secure Cloud Active</span>
+          <div className="flex items-center gap-6">
+            <a href="#features" className="transition-colors hover:text-brand-500">Features</a>
+            <a href="#security" className="transition-colors hover:text-brand-500">SDK</a>
+            <a href="#pricing" className="transition-colors hover:text-brand-500">Pricing</a>
+            <span className="flex items-center gap-1.5 font-semibold text-emerald-600 dark:text-emerald-400">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+              Firebase Secure Cloud Active
+            </span>
           </div>
         </div>
       </footer>

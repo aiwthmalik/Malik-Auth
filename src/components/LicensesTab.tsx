@@ -6,7 +6,6 @@ import {
   Check,
   Trash2,
   Search,
-  AlertCircle,
   Clock,
   ShieldAlert,
   X
@@ -18,6 +17,7 @@ import { ExpiryCountdown } from './ExpiryCountdown';
 import { ActionMenu, ActionMenuItem } from './ActionMenu';
 import { ConfirmModal } from './ConfirmModal';
 import { ExtendExpiryModal } from './ExtendExpiryModal';
+import { PageHeader, StatusBadge, EmptyState, TableShell, Sensitive, FieldLabel } from './ui';
 
 interface LicensesTabProps {
   appId: string;
@@ -170,44 +170,42 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
     return matchesSearch && matchesStatus;
   });
 
+  const unusedCount = licenses.filter((l) => l.status === 'Unused').length;
+
   return (
     <div className="space-y-6">
-      {/* Top Banner & Generate Button (Minimal) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
-            <Key className="w-5 h-5" />
-          </div>
-          <h2 className="text-lg font-bold text-slate-900">License Key Repository</h2>
-        </div>
-
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-colors shadow-sm shadow-indigo-600/20 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Generate Keys</span>
-        </button>
-      </div>
+      {/* Top Banner & Generate Button */}
+      <PageHeader
+        icon={Key}
+        accent="brand"
+        title="License Key Repository"
+        subtitle="Generate, manage, and distribute secure MALIK-XXXX keys."
+        actions={
+          <button onClick={() => setIsModalOpen(true)} className="btn-primary text-xs">
+            <Plus className="h-4 w-4" />
+            <span>Generate Keys</span>
+          </button>
+        }
+      />
 
       {/* Filter & Bulk Actions Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center space-x-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+      <div className="card flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400 dark:text-surface-500" />
             <input
               type="text"
               placeholder="Search keys, name, or note..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+              className="input py-2 pl-9 text-xs"
             />
           </div>
 
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+            className="select py-2 text-xs"
           >
             <option value="ALL">All Statuses ({licenses.length})</option>
             <option value="Unused">Unused ({licenses.filter((l) => l.status === 'Unused').length})</option>
@@ -219,178 +217,140 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
 
         <button
           onClick={copyAllUnused}
-          disabled={licenses.filter((l) => l.status === 'Unused').length === 0}
-          className="w-full sm:w-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 disabled:opacity-40 border border-slate-300 rounded-xl text-xs font-semibold text-slate-800 flex items-center justify-center space-x-1.5 transition-colors"
+          disabled={unusedCount === 0}
+          className="btn-ghost text-xs"
         >
           {bulkCopied ? (
             <>
-              <Check className="w-4 h-4 text-emerald-600" />
-              <span className="text-emerald-600">Copied All Unused Keys!</span>
+              <Check className="h-4 w-4 text-emerald-500" />
+              <span className="text-emerald-600 dark:text-emerald-400">Copied All Unused Keys!</span>
             </>
           ) : (
             <>
-              <Copy className="w-4 h-4" />
-              <span>Copy All Unused Keys ({licenses.filter((l) => l.status === 'Unused').length})</span>
+              <Copy className="h-4 w-4" />
+              <span>Copy All Unused Keys ({unusedCount})</span>
             </>
           )}
         </button>
       </div>
 
       {/* Licenses Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        {filteredLicenses.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 text-sm">
-            No licenses match your search criteria. Generate keys above to get started.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
-                  <th className="py-3.5 px-4 font-semibold">License Key (Hover to Reveal)</th>
-                  <th className="py-3.5 px-4 font-semibold">Key Name</th>
-                  <th className="py-3.5 px-4 font-semibold">Expiry & Countdown</th>
-                  <th className="py-3.5 px-4 font-semibold">Status</th>
-                  <th className="py-3.5 px-4 font-semibold">HWID / Used By</th>
-                  <th className="py-3.5 px-4 font-semibold">Note</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredLicenses.map((lic) => {
-                  const targetDate = parseExpiryToDate(lic.expiry);
-                  const isTimePassed = targetDate ? targetDate.getTime() <= Date.now() : false;
-                  const effectiveStatus = (lic.status === 'Active' || lic.status === 'Unused') && isTimePassed ? 'Expired' : lic.status;
+      <TableShell
+        headers={['License Key', 'Key Name', 'Expiry & Countdown', 'Status', 'HWID / Used By', 'Note', 'Actions']}
+        empty={
+          <EmptyState
+            icon={Key}
+            title="No licenses found"
+            message="No licenses match your search criteria. Generate keys above to get started."
+          />
+        }
+      >
+        {filteredLicenses.map((lic) => {
+          const targetDate = parseExpiryToDate(lic.expiry);
+          const isTimePassed = targetDate ? targetDate.getTime() <= Date.now() : false;
+          const effectiveStatus = (lic.status === 'Active' || lic.status === 'Unused') && isTimePassed ? 'Expired' : lic.status;
 
-                  const rowMenuItems: ActionMenuItem[] = [
-                    {
-                      label: 'Copy License Key',
-                      icon: Copy,
-                      onClick: () => copyKey(lic.key),
-                    },
-                    {
-                      label: 'Extend / Change Expiry',
-                      icon: Clock,
-                      variant: 'indigo',
-                      onClick: () => setExpiryModalLicense(lic),
-                    },
-                    {
-                      label: lic.status === 'Banned' ? 'Unban Key' : 'Ban Key',
-                      icon: ShieldAlert,
-                      variant: lic.status === 'Banned' ? 'success' : 'danger',
-                      onClick: () => handleToggleBan(lic),
-                    },
-                    {
-                      label: 'Delete Key',
-                      icon: Trash2,
-                      variant: 'danger',
-                      onClick: () => lic.id && setKeyToDelete({ id: lic.id, key: lic.key }),
-                    },
-                  ];
+          const rowMenuItems: ActionMenuItem[] = [
+            {
+              label: 'Copy License Key',
+              icon: Copy,
+              onClick: () => copyKey(lic.key),
+            },
+            {
+              label: 'Extend / Change Expiry',
+              icon: Clock,
+              variant: 'indigo',
+              onClick: () => setExpiryModalLicense(lic),
+            },
+            {
+              label: lic.status === 'Banned' ? 'Unban Key' : 'Ban Key',
+              icon: ShieldAlert,
+              variant: lic.status === 'Banned' ? 'success' : 'danger',
+              onClick: () => handleToggleBan(lic),
+            },
+            {
+              label: 'Delete Key',
+              icon: Trash2,
+              variant: 'danger',
+              onClick: () => lic.id && setKeyToDelete({ id: lic.id, key: lic.key }),
+            },
+          ];
 
-                  return (
-                    <tr key={lic.id || lic.key} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-indigo-700">
-                        <div className="flex items-center space-x-2">
-                          <span
-                            className="blur-sm hover:blur-none transition-all duration-200 cursor-pointer select-all"
-                            title="Hover to reveal license key"
-                          >
-                            {lic.key}
-                          </span>
-                          <button
-                            onClick={() => copyKey(lic.key)}
-                            className="text-slate-400 hover:text-slate-700 transition-colors p-1"
-                            title="Copy Key"
-                          >
-                            {copiedKey === lic.key ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4 font-semibold text-slate-900">
-                        <span className="px-2.5 py-1 rounded-lg text-xs bg-slate-100 text-slate-800 border border-slate-200 font-medium">
-                          {lic.keyName || 'Standard Key'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
-                        <ExpiryCountdown expiryStr={lic.expiry} />
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
-                            effectiveStatus === 'Unused'
-                              ? 'bg-sky-50 text-sky-700 border border-sky-200'
-                              : effectiveStatus === 'Active'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : effectiveStatus === 'Expired'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
-                          }`}
-                        >
-                          {effectiveStatus}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-slate-600">
-                        {lic.usedBy ? (
-                          <span
-                            className="blur-xs hover:blur-none transition-all duration-200 cursor-pointer"
-                            title="Hover to reveal HWID"
-                          >
-                            {lic.usedBy}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-xs text-slate-700">
-                        {lic.note || '—'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <ActionMenu items={rowMenuItems} align="right" />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+          return (
+            <tr key={lic.id || lic.key} className="transition-colors hover:bg-surface-50/80 dark:hover:bg-white/[0.02]">
+              <td className="px-4 py-3.5">
+                <div className="flex items-center gap-2">
+                  <Sensitive value={lic.key} className="font-mono font-bold text-brand-700 dark:text-brand-300" />
+                  <button
+                    onClick={() => copyKey(lic.key)}
+                    className="p-1 text-surface-400 transition-colors hover:text-surface-800 dark:hover:text-white"
+                    title="Copy Key"
+                  >
+                    {copiedKey === lic.key ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+              </td>
+              <td className="px-4 py-3.5">
+                <span className="inline-flex rounded-lg border border-surface-200 bg-surface-100 px-2.5 py-1 text-xs font-medium text-surface-800 dark:border-white/10 dark:bg-white/[0.06] dark:text-surface-200">
+                  {lic.keyName || 'Standard Key'}
+                </span>
+              </td>
+              <td className="px-4 py-3.5 font-mono text-xs text-surface-700 dark:text-surface-300">
+                <ExpiryCountdown expiryStr={lic.expiry} />
+              </td>
+              <td className="px-4 py-3.5">
+                <StatusBadge status={effectiveStatus} />
+              </td>
+              <td className="px-4 py-3.5 font-mono text-xs text-surface-600 dark:text-surface-400">
+                {lic.usedBy ? (
+                  <Sensitive value={lic.usedBy} className="font-medium" />
+                ) : (
+                  <span className="text-surface-400 dark:text-surface-500">—</span>
+                )}
+              </td>
+              <td className="px-4 py-3.5 text-xs text-surface-700 dark:text-surface-300">
+                {lic.note || <span className="text-surface-400 dark:text-surface-500">—</span>}
+              </td>
+              <td className="px-4 py-3.5 text-right">
+                <ActionMenu items={rowMenuItems} align="right" />
+              </td>
+            </tr>
+          );
+        })}
+      </TableShell>
 
       {/* Pop-up Generation Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-5">
-              <div className="flex items-center space-x-3">
-                <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
-                  <Key className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+          <div className="card max-h-[90vh] w-full max-w-lg animate-scale-in overflow-y-auto p-6">
+            <div className="mb-5 flex items-center justify-between border-b border-surface-200 pb-4 dark:border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-brand-500/20 bg-brand-500/10 text-brand-500">
+                  <Key className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Generate License Keys</h3>
-                  <p className="text-xs text-slate-500">
+                  <h3 className="text-lg font-bold tracking-tight text-surface-900 dark:text-white">Generate License Keys</h3>
+                  <p className="text-xs text-surface-500 dark:text-surface-400">
                     Create secure MALIK-XXXX-XXXX license keys
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="p-1 text-surface-400 transition-colors hover:text-surface-700 dark:hover:text-white"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             <form onSubmit={handleGenerate} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-                    Amount (1-50) <span className="text-rose-500">*</span>
-                  </label>
+                  <FieldLabel required>Amount (1-50)</FieldLabel>
                   <input
                     type="number"
                     min={1}
@@ -398,159 +358,106 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
                     required
                     value={amount}
                     onChange={(e) => setAmount(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 focus:outline-none focus:border-indigo-600"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-                    Key Name <span className="text-rose-500">*</span>
-                  </label>
+                  <FieldLabel required>Key Name</FieldLabel>
                   <input
                     type="text"
                     required
                     value={keyName}
                     onChange={(e) => setKeyName(e.target.value)}
                     placeholder="e.g. VIP Access Key"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-                  Note / Reference <span className="text-rose-500">*</span>
-                </label>
+                <FieldLabel required>Note / Reference</FieldLabel>
                 <input
                   type="text"
                   required
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
                   placeholder="e.g. Sold to @username (Batch #01)"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
+                  className="input"
                 />
               </div>
 
               {/* Improved Expiry Selection */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
-                    <Clock className="w-4 h-4 text-indigo-600" />
+              <div className="rounded-xl border border-surface-200 bg-surface-50/70 p-4 space-y-3 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center">
+                  <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-surface-700 dark:text-surface-300">
+                    <Clock className="h-4 w-4 text-brand-500" />
                     <span>Expiry Duration / Time ({TIMEZONE_LABEL})</span>
                   </label>
-                  <span className="text-[11px] font-mono text-indigo-600 font-semibold">
+                  <span className="text-[11px] font-mono font-semibold text-brand-600 dark:text-brand-300">
                     {computeExpiryString()}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('1day')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === '1day'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    1 Day (24h)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('7days')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === '7days'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    7 Days (1 Week)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('30days')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === '30days'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    30 Days (1 Month)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('365days')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === '365days'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    365 Days (1 Year)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('lifetime')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === 'lifetime'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Lifetime (Never)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('custom')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === 'custom'
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Custom Date/Time
-                  </button>
+                  {([
+                    ['1day', '1 Day (24h)'],
+                    ['7days', '7 Days (1 Week)'],
+                    ['30days', '30 Days (1 Month)'],
+                    ['365days', '365 Days (1 Year)'],
+                    ['lifetime', 'Lifetime (Never)'],
+                    ['custom', 'Custom Date/Time'],
+                  ] as const).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setExpiryMode(mode)}
+                      className={`rounded-lg border px-2.5 py-2 text-xs font-semibold transition-all ${
+                        expiryMode === mode
+                          ? 'border-brand-600 bg-brand-600 text-white shadow-sm shadow-brand-600/20'
+                          : 'border-surface-200 bg-white text-surface-700 hover:bg-surface-100 dark:border-white/10 dark:bg-white/[0.03] dark:text-surface-200 dark:hover:bg-white/[0.07]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
 
                 {expiryMode === 'custom' && (
-                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                  <div className="grid grid-cols-2 gap-3 border-t border-surface-200 pt-3 dark:border-white/10">
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                        Calendar Date
-                      </label>
+                      <FieldLabel>Calendar Date</FieldLabel>
                       <input
                         type="date"
                         value={customDate}
                         onChange={(e) => setCustomDate(e.target.value)}
-                        className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+                        className="input py-1.5 text-xs"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                        Time
-                      </label>
+                      <FieldLabel>Time</FieldLabel>
                       <input
                         type="time"
                         value={customTime}
                         onChange={(e) => setCustomTime(e.target.value)}
-                        className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+                        className="input py-1.5 text-xs"
                       />
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-3 border-t border-surface-200 pt-4 dark:border-white/10">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors"
+                  className="btn-ghost text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs transition-colors shadow-sm shadow-indigo-600/20"
+                  className="btn-primary text-xs"
                 >
                   {loading ? 'Generating...' : `Generate ${amount} Key(s)`}
                 </button>
@@ -581,5 +488,3 @@ export const LicensesTab: React.FC<LicensesTabProps> = ({
     </div>
   );
 };
-
-

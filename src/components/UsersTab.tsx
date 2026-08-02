@@ -22,6 +22,7 @@ import { ConfirmModal } from './ConfirmModal';
 import { ExtendExpiryModal } from './ExtendExpiryModal';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { PageHeader, StatusBadge, EmptyState, TableShell, Sensitive, FieldLabel } from './ui';
 
 interface UsersTabProps {
   appId: string;
@@ -171,351 +172,258 @@ export const UsersTab: React.FC<UsersTabProps> = ({ appId, users, onRefresh }) =
 
   return (
     <div className="space-y-6">
-      {/* Top Banner (Minimal) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 rounded-xl bg-violet-50 text-violet-600 border border-violet-100 shrink-0">
-            <Cpu className="w-5 h-5" />
-          </div>
-          <h2 className="text-lg font-bold text-slate-900">End Users Management</h2>
-        </div>
-
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition-colors shadow-sm shadow-violet-600/20 shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Create Custom User</span>
-        </button>
-      </div>
+      {/* Top Banner */}
+      <PageHeader
+        icon={Cpu}
+        accent="violet"
+        title="End Users Management"
+        subtitle="Monitor authenticated users, hardware locks, and access expiry."
+        actions={
+          <button onClick={() => setIsModalOpen(true)} className="btn-primary text-xs">
+            <Plus className="h-4 w-4" />
+            <span>Create Custom User</span>
+          </button>
+        }
+      />
 
       {successMsg && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl text-xs font-semibold flex items-center space-x-2 shadow-xs">
-          <Check className="w-4 h-4 text-emerald-600" />
+        <div className="flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+          <Check className="h-4 w-4 text-emerald-500" />
           <span>{successMsg}</span>
         </div>
       )}
 
       {/* Search Bar */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+      <div className="card flex items-center justify-between p-4">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400 dark:text-surface-500" />
           <input
             type="text"
             placeholder="Search username, HWID, or license..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+            className="input py-2 pl-9 text-xs"
           />
         </div>
-        <span className="text-xs text-slate-500 font-medium hidden sm:inline">
+        <span className="hidden text-xs font-medium text-surface-500 dark:text-surface-400 sm:inline">
           Showing {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
         </span>
       </div>
 
       {/* Users Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        {filteredUsers.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 text-sm">
-            No authenticated end users found. Users will appear automatically here in real time when they authenticate from your application.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
-                  <th className="py-3.5 px-4 font-semibold">Username</th>
-                  <th className="py-3.5 px-4 font-semibold">HWID (Hardware ID)</th>
-                  <th className="py-3.5 px-4 font-semibold">License Key</th>
-                  <th className="py-3.5 px-4 font-semibold">Expiry & Countdown</th>
-                  <th className="py-3.5 px-4 font-semibold">IP Address</th>
-                  <th className="py-3.5 px-4 font-semibold">Status</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredUsers.map((user) => {
-                  const targetDate = parseExpiryToDate(user.expiry);
-                  const isTimePassed = targetDate ? targetDate.getTime() <= Date.now() : false;
-                  const effectiveStatus = user.status === 'Active' && isTimePassed ? 'Expired' : user.status;
+      <TableShell
+        headers={['Username', 'HWID (Hardware ID)', 'License Key', 'Expiry & Countdown', 'IP Address', 'Status', 'Actions']}
+        empty={
+          <EmptyState
+            icon={Users}
+            title="No users found"
+            message="No authenticated end users found. Users will appear automatically here in real time when they authenticate from your application."
+          />
+        }
+      >
+        {filteredUsers.map((user) => {
+          const targetDate = parseExpiryToDate(user.expiry);
+          const isTimePassed = targetDate ? targetDate.getTime() <= Date.now() : false;
+          const effectiveStatus = user.status === 'Active' && isTimePassed ? 'Expired' : user.status;
 
-                  const rowMenuItems: ActionMenuItem[] = [
-                    {
-                      label: resettingId === user.id ? 'Resetting...' : 'Reset HWID Lock',
-                      icon: RefreshCw,
-                      disabled: resettingId === user.id,
-                      onClick: () => setUserToResetHwid(user),
-                    },
-                    {
-                      label: 'Extend / Change Expiry',
-                      icon: Clock,
-                      variant: 'indigo',
-                      onClick: () => setExpiryModalUser(user),
-                    },
-                    {
-                      label: user.status === 'Banned' ? 'Unban User' : 'Ban User',
-                      icon: user.status === 'Banned' ? ShieldCheck : ShieldAlert,
-                      variant: user.status === 'Banned' ? 'success' : 'danger',
-                      onClick: () => handleToggleBan(user),
-                    },
-                    {
-                      label: 'Delete User Record',
-                      icon: Trash2,
-                      variant: 'danger',
-                      onClick: () => setUserToDelete(user),
-                    },
-                  ];
+          const rowMenuItems: ActionMenuItem[] = [
+            {
+              label: resettingId === user.id ? 'Resetting...' : 'Reset HWID Lock',
+              icon: RefreshCw,
+              disabled: resettingId === user.id,
+              onClick: () => setUserToResetHwid(user),
+            },
+            {
+              label: 'Extend / Change Expiry',
+              icon: Clock,
+              variant: 'indigo',
+              onClick: () => setExpiryModalUser(user),
+            },
+            {
+              label: user.status === 'Banned' ? 'Unban User' : 'Ban User',
+              icon: user.status === 'Banned' ? ShieldCheck : ShieldAlert,
+              variant: user.status === 'Banned' ? 'success' : 'danger',
+              onClick: () => handleToggleBan(user),
+            },
+            {
+              label: 'Delete User Record',
+              icon: Trash2,
+              variant: 'danger',
+              onClick: () => setUserToDelete(user),
+            },
+          ];
 
-                  return (
-                    <tr key={user.id || user.username} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {user.username}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
-                        {user.hwid === 'RESET_PENDING' ? (
-                          <span className="text-amber-700 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                            RESET_PENDING (Awaiting New HWID)
-                          </span>
-                        ) : (
-                          <span
-                            className="blur-xs hover:blur-none transition-all duration-200 cursor-pointer select-all"
-                            title="Hover to reveal HWID"
-                          >
-                            {user.hwid || 'N/A'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-indigo-700">
-                        {user.licenseKey || 'N/A'}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
-                        <ExpiryCountdown expiryStr={user.expiry} />
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-slate-500">
-                        {user.ipAddress ? (
-                          <span
-                            className="blur-xs hover:blur-none transition-all duration-200 cursor-pointer select-all"
-                            title="Hover to reveal IP Address"
-                          >
-                            {user.ipAddress}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
-                            effectiveStatus === 'Active'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : effectiveStatus === 'Expired'
-                              ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
-                          }`}
-                        >
-                          {effectiveStatus}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <ActionMenu items={rowMenuItems} align="right" />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+          return (
+            <tr key={user.id || user.username} className="transition-colors hover:bg-surface-50/80 dark:hover:bg-white/[0.02]">
+              <td className="px-4 py-3.5 font-bold text-surface-900 dark:text-white">
+                {user.username}
+              </td>
+              <td className="px-4 py-3.5 font-mono text-xs text-surface-700 dark:text-surface-300">
+                {user.hwid === 'RESET_PENDING' ? (
+                  <span className="inline-flex rounded border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 font-bold text-amber-700 dark:text-amber-400">
+                    RESET_PENDING (Awaiting New HWID)
+                  </span>
+                ) : (
+                  <Sensitive value={user.hwid || 'N/A'} className="font-medium" />
+                )}
+              </td>
+              <td className="px-4 py-3.5 font-mono text-xs font-bold text-brand-700 dark:text-brand-300">
+                {user.licenseKey ? <Sensitive value={user.licenseKey} /> : <span className="text-surface-400 dark:text-surface-500">N/A</span>}
+              </td>
+              <td className="px-4 py-3.5 font-mono text-xs text-surface-700 dark:text-surface-300">
+                <ExpiryCountdown expiryStr={user.expiry} />
+              </td>
+              <td className="px-4 py-3.5 font-mono text-xs text-surface-600 dark:text-surface-400">
+                {user.ipAddress ? (
+                  <Sensitive value={user.ipAddress} className="font-medium" />
+                ) : (
+                  <span className="text-surface-400 dark:text-surface-500">—</span>
+                )}
+              </td>
+              <td className="px-4 py-3.5">
+                <StatusBadge status={effectiveStatus} />
+              </td>
+              <td className="px-4 py-3.5 text-right">
+                <ActionMenu items={rowMenuItems} align="right" />
+              </td>
+            </tr>
+          );
+        })}
+      </TableShell>
 
       {/* Pop-up User Creation Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in duration-200 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-5">
-              <div className="flex items-center space-x-3">
-                <div className="p-2.5 rounded-xl bg-violet-50 text-violet-600 border border-violet-100">
-                  <UserPlus className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+          <div className="card max-h-[90vh] w-full max-w-lg animate-scale-in overflow-y-auto p-6">
+            <div className="mb-5 flex items-center justify-between border-b border-surface-200 pb-4 dark:border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/10 text-violet-500">
+                  <UserPlus className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Create Custom User</h3>
-                  <p className="text-xs text-slate-500">
+                  <h3 className="text-lg font-bold tracking-tight text-surface-900 dark:text-white">Create Custom User</h3>
+                  <p className="text-xs text-surface-500 dark:text-surface-400">
                     Create an end user with custom expiry without requiring a key
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="p-1 text-surface-400 transition-colors hover:text-surface-700 dark:hover:text-white"
               >
-                <X className="w-5 h-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
             <form onSubmit={handleCreateUser} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-                    Username <span className="text-rose-500">*</span>
-                  </label>
+                  <FieldLabel required>Username</FieldLabel>
                   <input
                     type="text"
                     required
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
                     placeholder="e.g. malik_pro_user"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
+                    className="input"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-                    Password <span className="text-rose-500">*</span>
-                  </label>
+                  <FieldLabel required>Password</FieldLabel>
                   <input
                     type="text"
                     required
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="e.g. StrongPass!2026"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
+                    className="input"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-                  Email (Optional)
-                </label>
+                <FieldLabel>Email (Optional)</FieldLabel>
                 <input
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="user@example.com"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600"
+                  className="input"
                 />
               </div>
 
               {/* Improved Expiry Selection */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
-                    <Clock className="w-4 h-4 text-violet-600" />
+              <div className="space-y-3 rounded-xl border border-surface-200 bg-surface-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center">
+                  <label className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-surface-700 dark:text-surface-300">
+                    <Clock className="h-4 w-4 text-violet-500" />
                     <span>Expiry Duration / Time ({TIMEZONE_LABEL})</span>
                   </label>
-                  <span className="text-[11px] font-mono text-violet-600 font-semibold">
+                  <span className="text-[11px] font-mono font-semibold text-violet-600 dark:text-violet-300">
                     {computeExpiryString()}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('1day')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === '1day'
-                        ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    1 Day (24h)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('7days')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === '7days'
-                        ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    7 Days (1 Week)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('30days')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === '30days'
-                        ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    30 Days (1 Month)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('365days')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === '365days'
-                        ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    365 Days (1 Year)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('lifetime')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === 'lifetime'
-                        ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Lifetime (Never)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setExpiryMode('custom')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${
-                      expiryMode === 'custom'
-                        ? 'bg-violet-600 text-white border-violet-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    Custom Date/Time
-                  </button>
+                  {([
+                    ['1day', '1 Day (24h)'],
+                    ['7days', '7 Days (1 Week)'],
+                    ['30days', '30 Days (1 Month)'],
+                    ['365days', '365 Days (1 Year)'],
+                    ['lifetime', 'Lifetime (Never)'],
+                    ['custom', 'Custom Date/Time'],
+                  ] as const).map(([mode, label]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setExpiryMode(mode)}
+                      className={`rounded-lg border px-2.5 py-2 text-xs font-semibold transition-all ${
+                        expiryMode === mode
+                          ? 'border-violet-600 bg-violet-600 text-white shadow-sm shadow-violet-600/20'
+                          : 'border-surface-200 bg-white text-surface-700 hover:bg-surface-100 dark:border-white/10 dark:bg-white/[0.03] dark:text-surface-200 dark:hover:bg-white/[0.07]'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
 
                 {expiryMode === 'custom' && (
-                  <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
+                  <div className="grid grid-cols-2 gap-3 border-t border-surface-200 pt-3 dark:border-white/10">
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                        Calendar Date
-                      </label>
+                      <FieldLabel>Calendar Date</FieldLabel>
                       <input
                         type="date"
                         value={customDate}
                         onChange={(e) => setCustomDate(e.target.value)}
-                        className="w-full bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+                        className="input py-1.5 text-xs"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                        Time
-                      </label>
+                      <FieldLabel>Time</FieldLabel>
                       <input
                         type="time"
                         value={customTime}
                         onChange={(e) => setCustomTime(e.target.value)}
-                        className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+                        className="input py-1.5 text-xs"
                       />
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-200">
+              <div className="flex items-center justify-end gap-3 border-t border-surface-200 pt-4 dark:border-white/10">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors"
+                  className="btn-ghost text-xs"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creatingUser}
-                  className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-semibold rounded-xl text-xs transition-colors shadow-sm shadow-violet-600/20"
+                  className="btn-primary text-xs"
                 >
                   {creatingUser ? 'Creating...' : 'Create User'}
                 </button>

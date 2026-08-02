@@ -3,7 +3,6 @@ import {
   Radio,
   Power,
   Search,
-  Check,
   Trash2
 } from 'lucide-react';
 import { MalikSession } from '../types';
@@ -11,6 +10,7 @@ import { terminateSession, deleteSession } from '../lib/malikAuthService';
 import { formatPKTDateTime } from '../lib/dateUtils';
 import { ActionMenu, ActionMenuItem } from './ActionMenu';
 import { ConfirmModal } from './ConfirmModal';
+import { PageHeader, StatusBadge, EmptyState, TableShell, Sensitive } from './ui';
 
 interface SessionsTabProps {
   appId: string;
@@ -60,138 +60,93 @@ export const SessionsTab: React.FC<SessionsTabProps> = ({ appId, sessions, onRef
       s.sessionId.toLowerCase().includes(search.toLowerCase())
   );
 
+  const activeCount = sessions.filter((s) => s.status === 'Active').length;
+
   return (
     <div className="space-y-6">
-      {/* Banner (Minimal) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-100">
-            <Radio className="w-5 h-5 animate-pulse" />
-          </div>
-          <h2 className="text-lg font-bold text-slate-900">Live Connected Sessions</h2>
-        </div>
-      </div>
+      {/* Banner */}
+      <PageHeader
+        icon={Radio}
+        accent="emerald"
+        title="Live Connected Sessions"
+        subtitle="Real-time heartbeat monitoring for active client connections."
+      />
 
       {/* Search */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between">
+      <div className="card flex items-center justify-between p-4">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400 dark:text-surface-500" />
           <input
             type="text"
             placeholder="Search username, session ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+            className="input py-2 pl-9 text-xs"
           />
         </div>
-        <span className="text-xs text-slate-500 font-medium hidden sm:inline">
-          {filteredSessions.filter((s) => s.status === 'Active').length} Active Heartbeats
+        <span className="hidden text-xs font-medium text-emerald-600 dark:text-emerald-400 sm:inline">
+          {activeCount} Active Heartbeats
         </span>
       </div>
 
       {/* Sessions Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        {filteredSessions.length === 0 ? (
-          <div className="text-center py-12 text-slate-500 text-sm">
-            No live sessions connected. Sessions will appear in real time when users connect from your software.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="text-xs text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
-                  <th className="py-3.5 px-4 font-semibold">Username</th>
-                  <th className="py-3.5 px-4 font-semibold">Session ID (Hover to Reveal)</th>
-                  <th className="py-3.5 px-4 font-semibold">HWID</th>
-                  <th className="py-3.5 px-4 font-semibold">IP Address</th>
-                  <th className="py-3.5 px-4 font-semibold">Status</th>
-                  <th className="py-3.5 px-4 font-semibold">Last Heartbeat</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredSessions.map((s) => {
-                  const rowMenuItems: ActionMenuItem[] = [
-                    ...(s.status === 'Active'
-                      ? [
-                          {
-                            label: 'Kill Live Session',
-                            icon: Power,
-                            variant: 'danger' as const,
-                            onClick: () => setSessionToKill(s),
-                          },
-                        ]
-                      : []),
-                    {
-                      label: 'Delete Session Log',
-                      icon: Trash2,
-                      variant: 'danger' as const,
-                      onClick: () => setSessionToDelete(s),
-                    },
-                  ];
+      <TableShell
+        headers={['Username', 'Session ID', 'HWID', 'IP Address', 'Status', 'Last Heartbeat', 'Actions']}
+        empty={
+          <EmptyState
+            icon={Radio}
+            title="No live sessions"
+            message="No live sessions connected. Sessions will appear in real time when users connect from your software."
+          />
+        }
+      >
+        {filteredSessions.map((s) => {
+          const rowMenuItems: ActionMenuItem[] = [
+            ...(s.status === 'Active'
+              ? [
+                  {
+                    label: 'Kill Live Session',
+                    icon: Power,
+                    variant: 'danger' as const,
+                    onClick: () => setSessionToKill(s),
+                  },
+                ]
+              : []),
+            {
+              label: 'Delete Session Log',
+              icon: Trash2,
+              variant: 'danger' as const,
+              onClick: () => setSessionToDelete(s),
+            },
+          ];
 
-                  return (
-                    <tr key={s.id || s.sessionId} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {s.username}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-indigo-700">
-                        <span
-                          className="blur-xs hover:blur-none transition-all duration-200 cursor-pointer select-all"
-                          title="Hover to reveal Session ID"
-                        >
-                          {s.sessionId}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-slate-700">
-                        {s.hwid ? (
-                          <span
-                            className="blur-xs hover:blur-none transition-all duration-200 cursor-pointer select-all"
-                            title="Hover to reveal HWID"
-                          >
-                            {s.hwid}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono text-xs text-slate-500">
-                        {s.ipAddress ? (
-                          <span
-                            className="blur-xs hover:blur-none transition-all duration-200 cursor-pointer select-all"
-                            title="Hover to reveal IP Address"
-                          >
-                            {s.ipAddress}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span
-                          className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${
-                            s.status === 'Active'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-rose-50 text-rose-700 border border-rose-200'
-                          }`}
-                        >
-                          {s.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-xs font-medium text-slate-600">
-                        {formatPKTDateTime(s.lastHeartbeat)}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <ActionMenu items={rowMenuItems} align="right" />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+          return (
+            <tr key={s.id || s.sessionId} className="transition-colors hover:bg-surface-50/80 dark:hover:bg-white/[0.02]">
+              <td className="px-4 py-3.5 font-bold text-surface-900 dark:text-white">
+                {s.username}
+              </td>
+              <td className="px-4 py-3.5 font-mono text-xs font-bold text-brand-700 dark:text-brand-300">
+                <Sensitive value={s.sessionId} />
+              </td>
+              <td className="px-4 py-3.5 font-mono text-xs text-surface-700 dark:text-surface-300">
+                {s.hwid ? <Sensitive value={s.hwid} className="font-medium" /> : <span className="text-surface-400 dark:text-surface-500">—</span>}
+              </td>
+              <td className="px-4 py-3.5 font-mono text-xs text-surface-600 dark:text-surface-400">
+                {s.ipAddress ? <Sensitive value={s.ipAddress} className="font-medium" /> : <span className="text-surface-400 dark:text-surface-500">—</span>}
+              </td>
+              <td className="px-4 py-3.5">
+                <StatusBadge status={s.status} />
+              </td>
+              <td className="px-4 py-3.5 text-xs font-medium text-surface-600 dark:text-surface-400">
+                {formatPKTDateTime(s.lastHeartbeat)}
+              </td>
+              <td className="px-4 py-3.5 text-right">
+                <ActionMenu items={rowMenuItems} align="right" />
+              </td>
+            </tr>
+          );
+        })}
+      </TableShell>
 
       <ConfirmModal
         isOpen={!!sessionToKill}

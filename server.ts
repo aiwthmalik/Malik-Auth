@@ -113,26 +113,80 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
-  // Serve static SDK directory so files can be accessed via URL
+  // Serve static SDK & Auth solution directories
   app.use('/sdk', express.static(path.join(process.cwd(), 'sdk')));
+  app.use('/Auth', express.static(path.join(process.cwd(), 'Auth')));
 
   // Endpoint to retrieve all C# WinForms SDK files for UI viewer and download
   app.get('/api/v1/sdk/csharp-files', (req, res) => {
     try {
-      const sdkDir = path.join(process.cwd(), 'sdk', 'csharp-winforms');
-      if (!fs.existsSync(sdkDir)) {
+      const dirPath = fs.existsSync(path.join(process.cwd(), 'Auth', 'Auth'))
+        ? path.join(process.cwd(), 'Auth', 'Auth')
+        : path.join(process.cwd(), 'sdk', 'csharp-winforms');
+
+      if (!fs.existsSync(dirPath)) {
         return res.status(404).json({ success: false, message: 'SDK directory not found.' });
       }
 
-      const fileNames = fs.readdirSync(sdkDir);
-      const files = fileNames.map((fileName) => {
-        const filePath = path.join(sdkDir, fileName);
-        const content = fs.readFileSync(filePath, 'utf-8');
-        return {
-          fileName,
-          path: `/sdk/csharp-winforms/${fileName}`,
-          content
-        };
+      const fileNames = fs.readdirSync(dirPath);
+      const textExtensions = ['.cs', '.csproj', '.config', '.json', '.xml', '.md'];
+      const files: any[] = [];
+
+      fileNames.forEach((fileName) => {
+        const filePath = path.join(dirPath, fileName);
+        const stat = fs.statSync(filePath);
+        if (stat.isFile()) {
+          const ext = path.extname(fileName).toLowerCase();
+          if (textExtensions.includes(ext) || fileName === 'packages.config') {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            files.push({
+              fileName,
+              path: `/Auth/Auth/${fileName}`,
+              content
+            });
+          }
+        }
+      });
+
+      return res.json({ success: true, files });
+    } catch (err: any) {
+      return res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  // Serve static SDK & Auth solution directories
+  app.use('/sdk', express.static(path.join(process.cwd(), 'sdk')));
+  app.use('/Auth', express.static(path.join(process.cwd(), 'Auth')));
+
+  // Endpoint to retrieve all C# WinForms SDK files for UI viewer and download
+  app.get('/api/v1/sdk/csharp-files', (req, res) => {
+    try {
+      const dirPath = fs.existsSync(path.join(process.cwd(), 'Auth', 'Auth'))
+        ? path.join(process.cwd(), 'Auth', 'Auth')
+        : path.join(process.cwd(), 'sdk', 'csharp-winforms');
+
+      if (!fs.existsSync(dirPath)) {
+        return res.status(404).json({ success: false, message: 'SDK directory not found.' });
+      }
+
+      const fileNames = fs.readdirSync(dirPath);
+      const textExtensions = ['.cs', '.csproj', '.config', '.json', '.xml', '.md'];
+      const files: any[] = [];
+
+      fileNames.forEach((fileName) => {
+        const filePath = path.join(dirPath, fileName);
+        const stat = fs.statSync(filePath);
+        if (stat.isFile()) {
+          const ext = path.extname(fileName).toLowerCase();
+          if (textExtensions.includes(ext) || fileName === 'packages.config') {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            files.push({
+              fileName,
+              path: `/Auth/Auth/${fileName}`,
+              content
+            });
+          }
+        }
       });
 
       return res.json({ success: true, files });

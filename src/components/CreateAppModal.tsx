@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { ShieldCheck, X, Sparkles } from 'lucide-react';
+import { ShieldCheck, X, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
 import { createApp } from '../lib/malikAuthService';
+import { FieldLabel } from './ui';
 
 interface CreateAppModalProps {
   isOpen: boolean;
@@ -82,21 +83,21 @@ export const CreateAppModal: React.FC<CreateAppModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full shadow-xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="card w-full max-w-md overflow-hidden animate-scale-in">
+        <div className="px-6 py-5 border-b border-surface-200 dark:border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-brand-500/10 text-brand-500 border border-brand-500/20">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-lg text-slate-900">Create MalikAuth App</h3>
-              <p className="text-xs text-slate-500">Enterprise Licensing & Remote Memory Sync</p>
+              <h3 className="font-bold text-lg tracking-tight text-surface-900 dark:text-white">Create MalikAuth App</h3>
+              <p className="text-xs text-surface-500 dark:text-surface-400">Enterprise Licensing & Remote Memory Sync</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 transition-colors"
+            className="p-1.5 rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:text-surface-100 dark:hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -104,46 +105,43 @@ export const CreateAppModal: React.FC<CreateAppModalProps> = ({
 
         <form onSubmit={handleCreate} className="p-6 space-y-4">
           {error && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs px-3.5 py-2.5 rounded-lg font-medium shadow-xs">
-              {error}
+            <div className="bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs px-3.5 py-2.5 rounded-lg font-medium flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{error}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-              Application Title
-            </label>
+            <FieldLabel required>Application Title</FieldLabel>
             <input
               type="text"
               required
               placeholder="e.g. Apex Platform v2 or Enterprise Loader"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 transition-colors"
+              className="input"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-                Initial Version
-              </label>
+              <FieldLabel required>Initial Version</FieldLabel>
               <input
                 type="text"
                 required
                 value={version}
                 onChange={(e) => setVersion(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 transition-colors font-mono"
+                className="input font-mono"
               />
             </div>
 
             <div className="flex flex-col justify-end">
-              <label className="flex items-center space-x-2 text-xs font-semibold text-slate-700 cursor-pointer bg-slate-50 border border-slate-300 rounded-lg p-2.5">
+              <label className="flex items-center gap-2.5 text-xs font-semibold text-surface-700 dark:text-surface-200 cursor-pointer input py-2.5">
                 <input
                   type="checkbox"
                   checked={allowHwidReset}
                   onChange={(e) => setAllowHwidReset(e.target.checked)}
-                  className="rounded bg-white border-slate-300 text-indigo-600 focus:ring-0"
+                  className="rounded bg-white border-surface-300 text-brand-600 focus:ring-brand-500/20 dark:bg-white/[0.04] dark:border-white/20"
                 />
                 <span>Allow HWID Resets</span>
               </label>
@@ -151,58 +149,55 @@ export const CreateAppModal: React.FC<CreateAppModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-              Message of the Day (MOTD)
-            </label>
+            <FieldLabel>Message of the Day (MOTD)</FieldLabel>
             <textarea
               rows={2}
               value={motd}
               onChange={(e) => setMotd(e.target.value)}
               placeholder="News or status shown to software clients upon connection"
-              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 transition-colors"
+              className="input resize-none"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-700 mb-1.5">
-              Discord Webhook URL <span className="text-rose-500">*</span>
-            </label>
+            <FieldLabel required>Discord Webhook URL</FieldLabel>
             <input
               type="url"
               required
               placeholder="https://discord.com/api/webhooks/..."
               value={discordWebhook}
               onChange={(e) => setDiscordWebhook(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-300 rounded-lg px-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 transition-colors"
+              className="input"
             />
-            <p className="text-[11px] text-slate-500 mt-1">
+            <p className="text-[11px] text-surface-500 dark:text-surface-400 mt-1">
               Required for receiving real-time audit logs and activity notifications when the dashboard is closed.
             </p>
           </div>
 
-          <div className="bg-indigo-50/60 rounded-xl p-3 border border-indigo-100">
-            <div className="flex items-center space-x-2 text-xs text-indigo-900 font-semibold">
-              <Sparkles className="w-4 h-4 text-indigo-600" />
+          <div className="bg-brand-500/[0.06] rounded-xl p-3 border border-brand-500/15">
+            <div className="flex items-center gap-2 text-xs text-brand-600 dark:text-brand-400 font-semibold">
+              <Sparkles className="w-4 h-4 text-brand-500" />
               <span>Automatic Cryptographic Generation</span>
             </div>
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="text-xs text-surface-600 dark:text-surface-400 mt-1">
               MalikAuth will automatically generate your cryptographic App ID, App Secret, and AES Encryption Key for secure remote synchronization.
             </p>
           </div>
 
-          <div className="flex items-center justify-end space-x-3 pt-3">
+          <div className="flex items-center justify-end gap-3 pt-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition-colors"
+              className="btn-ghost"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-xs font-semibold text-white shadow-sm shadow-indigo-600/20 transition-colors flex items-center space-x-1.5"
+              className="btn-primary"
             >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
               <span>{loading ? 'Creating...' : 'Create MalikAuth App'}</span>
             </button>
           </div>

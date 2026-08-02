@@ -5,28 +5,88 @@
       "description": "Application configuration",
       "type": "object",
       "properties": {
-        "appId": { "type": "string", "pattern": "^[a-zA-Z0-9]{10}$" },
+        "appId": { "type": "string" },
         "name": { "type": "string" },
         "ownerId": { "type": "string" },
-        "role": { "type": "string", "enum": ["Admin", "Moderator", "User"] },
         "appSecret": { "type": "string" },
         "encryptionKey": { "type": "string" },
         "version": { "type": "string" },
-        "status": { "type": "string", "enum": ["Active", "Maintenance", "Disabled"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
       },
-      "required": ["appId", "name", "ownerId"]
+      "required": ["appId", "name"]
     },
     "MalikLicense": {
       "title": "MalikLicense",
-      "description": "User license",
+      "description": "User license keys",
       "type": "object",
       "properties": {
         "key": { "type": "string" },
         "appId": { "type": "string" },
-        "status": { "type": "string", "enum": ["Active", "Unused", "Terminated"] }
+        "status": { "type": "string" }
       },
       "required": ["key", "appId", "status"]
+    },
+    "MalikUser": {
+      "title": "MalikUser",
+      "description": "Registered end users",
+      "type": "object",
+      "properties": {
+        "appId": { "type": "string" },
+        "username": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["appId", "username"]
+    },
+    "MalikSession": {
+      "title": "MalikSession",
+      "description": "Live active sessions",
+      "type": "object",
+      "properties": {
+        "appId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["appId", "sessionId"]
+    },
+    "MalikRemoteVariable": {
+      "title": "MalikRemoteVariable",
+      "description": "Remote key-value configuration variables",
+      "type": "object",
+      "properties": {
+        "appId": { "type": "string" },
+        "key": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["appId", "key"]
+    },
+    "MalikActivityLog": {
+      "title": "MalikActivityLog",
+      "description": "Activity and audit logs",
+      "type": "object",
+      "properties": {
+        "appId": { "type": "string" },
+        "action": { "type": "string" }
+      },
+      "required": ["appId", "action"]
+    },
+    "MalikCrashReport": {
+      "title": "MalikCrashReport",
+      "description": "SDK crash reports",
+      "type": "object",
+      "properties": {
+        "appId": { "type": "string" },
+        "exceptionMessage": { "type": "string" }
+      }
+    },
+    "MalikAnalyticsLog": {
+      "title": "MalikAnalyticsLog",
+      "description": "Usage analytics logs",
+      "type": "object",
+      "properties": {
+        "appId": { "type": "string" },
+        "eventType": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -38,10 +98,28 @@
       "schema": { "$ref": "MalikLicense" },
       "description": "Application licenses"
     },
+    "/users/{userId}": {
+      "schema": { "$ref": "MalikUser" },
+      "description": "End users"
+    },
+    "/sessions/{sessionId}": {
+      "schema": { "$ref": "MalikSession" },
+      "description": "Live active user sessions"
+    },
+    "/remote_variables/{varId}": {
+      "schema": { "$ref": "MalikRemoteVariable" },
+      "description": "Remote key-value variables"
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "MalikActivityLog" },
+      "description": "Activity logs"
+    },
     "/crash_reports/{reportId}": {
+      "schema": { "$ref": "MalikCrashReport" },
       "description": "SDK crash reports"
     },
     "/analytics_logs/{logId}": {
+      "schema": { "$ref": "MalikAnalyticsLog" },
       "description": "Usage analytics logs"
     }
   }

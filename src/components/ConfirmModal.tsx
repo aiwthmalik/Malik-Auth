@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Trash2, X } from 'lucide-react';
+import { AlertTriangle, Trash2, X, Loader2 } from 'lucide-react';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -26,47 +26,47 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  let iconBg = 'bg-rose-50 text-rose-600 border-rose-100';
-  let buttonBg = 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/20';
+  let iconCls = 'bg-rose-500/10 text-rose-500 border-rose-500/20 dark:text-rose-400';
+  let iconBtn = 'btn-danger';
   if (variant === 'warning') {
-    iconBg = 'bg-amber-50 text-amber-600 border-amber-100';
-    buttonBg = 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20';
+    iconCls = 'bg-amber-500/10 text-amber-500 border-amber-500/20 dark:text-amber-400';
+    iconBtn = 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/25 rounded-xl inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none';
   } else if (variant === 'indigo') {
-    iconBg = 'bg-indigo-50 text-indigo-600 border-indigo-100';
-    buttonBg = 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/20';
+    iconCls = 'bg-brand-500/10 text-brand-500 border-brand-500/20 dark:text-brand-400';
+    iconBtn = 'btn-primary';
   }
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div
-        className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 relative animate-in zoom-in-95 duration-150"
+        className="card w-full max-w-md p-6 animate-scale-in relative"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           onClick={onClose}
           disabled={isLoading}
-          className="absolute top-4 right-4 p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          className="absolute top-4 right-4 p-1 rounded-lg text-surface-400 hover:text-surface-600 hover:bg-surface-100 dark:hover:text-surface-100 dark:hover:bg-white/10 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <div className="flex items-start space-x-4">
-          <div className={`p-3 rounded-2xl border shrink-0 ${iconBg}`}>
+        <div className="flex items-start gap-4">
+          <div className={`p-3 rounded-2xl border shrink-0 ${iconCls}`}>
             {variant === 'danger' ? <Trash2 className="w-6 h-6" /> : <AlertTriangle className="w-6 h-6" />}
           </div>
 
           <div className="flex-1 pr-6">
-            <h3 className="text-lg font-bold text-slate-900">{title}</h3>
-            <p className="mt-1.5 text-xs text-slate-600 leading-relaxed">{message}</p>
+            <h3 className="text-lg font-bold tracking-tight text-surface-900 dark:text-white">{title}</h3>
+            <p className="mt-1.5 text-xs text-surface-600 dark:text-surface-400 leading-relaxed">{message}</p>
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-end space-x-2.5">
+        <div className="mt-6 flex items-center justify-end gap-2.5">
           <button
             type="button"
             disabled={isLoading}
             onClick={onClose}
-            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition-colors"
+            className="btn-ghost"
           >
             {cancelLabel}
           </button>
@@ -74,13 +74,10 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             type="button"
             disabled={isLoading}
             onClick={onConfirm}
-            className={`px-4 py-2.5 font-semibold text-xs rounded-xl shadow-sm transition-colors flex items-center space-x-1.5 ${buttonBg} disabled:opacity-50`}
+            className={`${iconBtn} disabled:opacity-50 disabled:pointer-events-none`}
           >
-            {isLoading ? (
-              <span>Processing...</span>
-            ) : (
-              <span>{confirmLabel}</span>
-            )}
+            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+            <span>{isLoading ? 'Processing...' : confirmLabel}</span>
           </button>
         </div>
       </div>

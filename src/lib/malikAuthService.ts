@@ -107,9 +107,20 @@ export function flushAuditLogsToDiscord(appId: string, webhookUrl?: string): voi
 // APPLICATIONS API
 // ========================
 export async function getApps(): Promise<MalikApp[]> {
-  const q = query(collection(db, 'applications'), orderBy('createdAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as MalikApp));
+  try {
+    // Query without orderBy so apps missing a createdAt field are still returned.
+    // Sort in-memory by createdAt (desc) with missing dates treated as oldest.
+    const snapshot = await getDocs(collection(db, 'applications'));
+    const apps = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as MalikApp));
+    return apps.sort((a, b) => {
+      const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return tb - ta;
+    });
+  } catch (err) {
+    console.error('Error fetching apps:', err);
+    return [];
+  }
 }
 
 export async function createApp(data: Omit<MalikApp, 'id' | 'createdAt'>): Promise<string> {
@@ -135,12 +146,17 @@ export async function deleteApp(id: string): Promise<void> {
 // LICENSES API
 // ========================
 export async function getLicenses(appId?: string): Promise<MalikLicense[]> {
-  const colRef = collection(db, 'licenses');
-  const q = appId
-    ? query(colRef, where('appId', '==', appId))
-    : query(colRef, orderBy('createdAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikLicense));
+  try {
+    const colRef = collection(db, 'licenses');
+    const q = appId
+      ? query(colRef, where('appId', '==', appId))
+      : query(colRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikLicense));
+  } catch (err) {
+    console.error('Error fetching licenses:', err);
+    return [];
+  }
 }
 
 export async function generateLicenses(
@@ -196,10 +212,15 @@ export async function deleteLicense(id: string): Promise<void> {
 // USERS API
 // ========================
 export async function getUsers(appId?: string): Promise<MalikUser[]> {
-  const colRef = collection(db, 'users');
-  const q = appId ? query(colRef, where('appId', '==', appId)) : query(colRef, orderBy('createdAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikUser));
+  try {
+    const colRef = collection(db, 'users');
+    const q = appId ? query(colRef, where('appId', '==', appId)) : query(colRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikUser));
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    return [];
+  }
 }
 
 export async function createUser(
@@ -251,10 +272,15 @@ export async function deleteUser(id: string): Promise<void> {
 // SESSIONS API (REAL-TIME)
 // ========================
 export async function getSessions(appId?: string): Promise<MalikSession[]> {
-  const colRef = collection(db, 'sessions');
-  const q = appId ? query(colRef, where('appId', '==', appId)) : query(colRef, orderBy('createdAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikSession));
+  try {
+    const colRef = collection(db, 'sessions');
+    const q = appId ? query(colRef, where('appId', '==', appId)) : query(colRef, orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikSession));
+  } catch (err) {
+    console.error('Error fetching sessions:', err);
+    return [];
+  }
 }
 
 export async function terminateSession(id: string, sessionId: string, appId: string): Promise<void> {
@@ -270,10 +296,15 @@ export async function deleteSession(id: string): Promise<void> {
 // REMOTE VARIABLES API
 // ========================
 export async function getRemoteVariables(appId?: string): Promise<MalikRemoteVariable[]> {
-  const colRef = collection(db, 'remote_variables');
-  const q = appId ? query(colRef, where('appId', '==', appId)) : query(colRef, orderBy('updatedAt', 'desc'));
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikRemoteVariable));
+  try {
+    const colRef = collection(db, 'remote_variables');
+    const q = appId ? query(colRef, where('appId', '==', appId)) : query(colRef, orderBy('updatedAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as MalikRemoteVariable));
+  } catch (err) {
+    console.error('Error fetching remote variables:', err);
+    return [];
+  }
 }
 
 export async function setRemoteVariable(data: Omit<MalikRemoteVariable, 'id' | 'updatedAt'>): Promise<void> {

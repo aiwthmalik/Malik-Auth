@@ -12,6 +12,7 @@ import { SdkFilesTab } from './components/SdkFilesTab';
 import { LandingPage } from './components/LandingPage';
 import { AuthModal } from './components/AuthModal';
 import { PktClockHeader } from './components/PktClockHeader';
+import { SafeRender } from './components/SafeRender';
 
 import {
   MalikApp,
@@ -64,7 +65,6 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (user) {
-        // Automatically switch to console view when user signs in
         setViewMode('console');
       }
     });
@@ -83,18 +83,19 @@ export default function App() {
   const loadAllData = useCallback(async (app: MalikApp | null) => {
     if (!app) return;
     try {
-      const [lics, usrs, sess, vars, lg] = await Promise.all([
+      const [licsRes, usrsRes, sessRes, varsRes, lgRes] = await Promise.allSettled([
         getLicenses(app.appId),
         getUsers(app.appId),
         getSessions(app.appId),
         getRemoteVariables(app.appId),
         getActivityLogs(app.appId),
       ]);
-      setLicenses(lics);
-      setUsers(usrs);
-      setSessions(sess);
-      setRemoteVariables(vars);
-      setLogs(lg);
+
+      setLicenses(licsRes.status === 'fulfilled' ? licsRes.value : []);
+      setUsers(usrsRes.status === 'fulfilled' ? usrsRes.value : []);
+      setSessions(sessRes.status === 'fulfilled' ? sessRes.value : []);
+      setRemoteVariables(varsRes.status === 'fulfilled' ? varsRes.value : []);
+      setLogs(lgRes.status === 'fulfilled' ? lgRes.value : []);
     } catch (err: any) {
       console.error('Error loading app data:', err);
       setError(err.message || 'Error loading application data');
@@ -106,14 +107,15 @@ export default function App() {
     setError(null);
     try {
       const fetchedApps = await getApps();
-      // Only use real apps created by the developer - no demo data or mock seeding
       setApps(fetchedApps);
       if (fetchedApps.length > 0) {
-        const current = selectedApp
-          ? fetchedApps.find((a) => a.appId === selectedApp.appId) || fetchedApps[0]
-          : fetchedApps[0];
-        setSelectedApp(current);
-        await loadAllData(current);
+        setSelectedApp((prev) => {
+          const current = prev
+            ? fetchedApps.find((a) => a.appId === prev.appId) || fetchedApps[0]
+            : fetchedApps[0];
+          loadAllData(current);
+          return current;
+        });
       } else {
         setSelectedApp(null);
         setLicenses([]);
@@ -128,20 +130,20 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [selectedApp, loadAllData]);
+  }, [loadAllData]);
 
   useEffect(() => {
     if (currentUser || viewMode === 'console') {
       loadApps();
     }
-  }, [currentUser, viewMode, loadApps]);
+  }, [currentUser, viewMode]);
 
   useEffect(() => {
     if (!selectedApp) return;
 
     loadAllData(selectedApp);
 
-    // Real-time Firestore subscriptions so key usage and user creation from WinForms show instantly
+    // Real-time Firestore subscriptions
     const unsubLics = subscribeLicenses(selectedApp.appId, (updatedLicenses) => {
       setLicenses(updatedLicenses);
     });
@@ -164,11 +166,30 @@ export default function App() {
       unsubSessions();
       unsubLogs();
     };
-  }, [selectedApp, loadAllData]);
+  }, [selectedApp?.appId, loadAllData]);
 
   const handleAppCreated = async (newId: string) => {
     await loadApps();
   };
+
+  if (viewMode === 'landing') {
+    return (
+      <SafeRender name="Landing View">
+        <LandingPage
+          onOpenAuthModal={() => setIsAuthModalOpen(true)}
+          onLaunchConsole={() => setViewMode('console')}
+          isLoggedIn={!!currentUser}
+          userEmail={currentUser?.email || currentUser?.displayName || null}
+          onSignOut={handleSignOut}
+        />
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onSuccess={() => setViewMode('console')}
+        />
+      </SafeRender>
+    );
+  }
 
   if (loading && apps.length === 0) {
     return (
@@ -185,180 +206,179 @@ export default function App() {
     );
   }
 
-  if (viewMode === 'landing') {
-    return (
-      <>
-        <LandingPage
-          onOpenAuthModal={() => setIsAuthModalOpen(true)}
-          onLaunchConsole={() => setViewMode('console')}
-          isLoggedIn={!!currentUser}
+  return (
+    <SafeRender name="Console Shell">
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex">
+        {/* Sidebar Navigation */}
+        <Sidebar
+          apps={apps}
+          selectedApp={selectedApp}
+          onSelectApp={(app) => {
+            setSelectedApp(app);
+            setActiveTab('overview');
+          }}
+          onOpenCreateApp={() => setIsCreateModalOpen(true)}
+          activeTab={activeTab}
+          onSelectTab={(tab) => setActiveTab(tab)}
           userEmail={currentUser?.email || currentUser?.displayName || null}
           onSignOut={handleSignOut}
+          onOpenLanding={() => setViewMode('landing')}
         />
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto min-h-screen">
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {error && (
+              <div className="mb-6 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl flex items-center justify-between shadow-xs">
+                <div className="flex items-center space-x-2 text-sm font-medium">
+                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                  <span>{error}</span>
+                </div>
+                <button
+                  onClick={loadApps}
+                  className="text-xs font-semibold px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded-lg transition-colors"
+                >
+                  Retry Connection
+                </button>
+              </div>
+            )}
+
+            {activeTab === 'manage_apps' ? (
+              <SafeRender name="Manage Apps Tab">
+                <ManageAppsTab
+                  apps={apps}
+                  selectedApp={selectedApp}
+                  onSelectApp={(app) => {
+                    setSelectedApp(app);
+                    loadAllData(app);
+                  }}
+                  onOpenCreateApp={() => setIsCreateModalOpen(true)}
+                  onRefresh={loadApps}
+                />
+              </SafeRender>
+            ) : !selectedApp ? (
+              <div className="text-center py-20 bg-white border border-slate-200 rounded-2xl p-8 shadow-xs">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4 border border-indigo-100">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900">No Applications Created Yet</h2>
+                <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
+                  You currently have no applications. Click the button below to create your first MalikAuth application and start generating secure license keys.
+                </p>
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="mt-6 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs transition-colors shadow-sm shadow-indigo-600/20"
+                >
+                  + Create First Application
+                </button>
+              </div>
+            ) : (
+              <div className="animate-in fade-in duration-200">
+                {activeTab === 'overview' && (
+                  <SafeRender name="Dashboard Overview">
+                    <DashboardOverview
+                      app={selectedApp}
+                      licenses={licenses}
+                      users={users}
+                      sessions={sessions}
+                      logs={logs}
+                      onRefresh={() => loadAllData(selectedApp)}
+                      onNavigateToTab={(tab) => setActiveTab(tab)}
+                    />
+                  </SafeRender>
+                )}
+
+                {activeTab === 'csharp_sdk' && (
+                  <SafeRender name="C# SDK Tab">
+                    <SdkFilesTab app={selectedApp} />
+                  </SafeRender>
+                )}
+
+                {activeTab === 'licenses' && (
+                  <SafeRender name="Licenses Tab">
+                    <LicensesTab
+                      appId={selectedApp.appId}
+                      licenses={licenses}
+                      onRefresh={() => loadAllData(selectedApp)}
+                    />
+                  </SafeRender>
+                )}
+
+                {activeTab === 'users' && (
+                  <SafeRender name="Users Tab">
+                    <UsersTab
+                      appId={selectedApp.appId}
+                      users={users}
+                      onRefresh={() => loadAllData(selectedApp)}
+                    />
+                  </SafeRender>
+                )}
+
+                {activeTab === 'sessions' && (
+                  <SafeRender name="Sessions Tab">
+                    <SessionsTab
+                      appId={selectedApp.appId}
+                      sessions={sessions}
+                      onRefresh={() => loadAllData(selectedApp)}
+                    />
+                  </SafeRender>
+                )}
+
+                {activeTab === 'remote' && (
+                  <SafeRender name="Remote Variables Tab">
+                    <RemoteVariablesTab
+                      appId={selectedApp.appId}
+                      variables={remoteVariables}
+                      onRefresh={() => loadAllData(selectedApp)}
+                    />
+                  </SafeRender>
+                )}
+
+                {activeTab === 'logs' && (
+                  <SafeRender name="Activity Logs Tab">
+                    <ActivityLogsTab
+                      logs={logs}
+                      onRefresh={() => loadAllData(selectedApp)}
+                    />
+                  </SafeRender>
+                )}
+              </div>
+            )}
+          </main>
+
+          {/* Footer */}
+          <footer className="border-t border-slate-200 bg-white py-6 text-xs text-slate-500 mt-auto">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center space-x-2">
+                <span className="font-bold text-slate-800">MalikAuth Security Platform</span>
+                <span className="text-slate-300">•</span>
+                <span>Enterprise Remote Licensing & Memory Security</span>
+              </div>
+              <div className="flex items-center space-x-4">
+                <span className="text-emerald-600 font-semibold flex items-center space-x-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                  <span>Firebase Cloud Active</span>
+                </span>
+                <span className="text-slate-400 font-mono">MalikAuth v2.5.0</span>
+              </div>
+            </div>
+          </footer>
+        </div>
+
+        {/* Create Application Modal */}
+        <CreateAppModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onAppCreated={handleAppCreated}
+        />
+
+        {/* Authentication Modal */}
         <AuthModal
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
           onSuccess={() => setViewMode('console')}
         />
-      </>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex">
-      {/* Sidebar Navigation */}
-      <Sidebar
-        apps={apps}
-        selectedApp={selectedApp}
-        onSelectApp={(app) => {
-          setSelectedApp(app);
-          setActiveTab('overview');
-        }}
-        onOpenCreateApp={() => setIsCreateModalOpen(true)}
-        activeTab={activeTab}
-        onSelectTab={(tab) => setActiveTab(tab)}
-        userEmail={currentUser?.email || currentUser?.displayName || null}
-        onSignOut={handleSignOut}
-        onOpenLanding={() => setViewMode('landing')}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-y-auto min-h-screen">
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {error && (
-            <div className="mb-6 bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-2xl flex items-center justify-between shadow-xs">
-              <div className="flex items-center space-x-2 text-sm font-medium">
-                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-                <span>{error}</span>
-              </div>
-              <button
-                onClick={loadApps}
-                className="text-xs font-semibold px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-900 rounded-lg transition-colors"
-              >
-                Retry Connection
-              </button>
-            </div>
-          )}
-
-          {activeTab === 'manage_apps' ? (
-            <ManageAppsTab
-              apps={apps}
-              selectedApp={selectedApp}
-              onSelectApp={(app) => {
-                setSelectedApp(app);
-                loadAllData(app);
-              }}
-              onOpenCreateApp={() => setIsCreateModalOpen(true)}
-              onRefresh={loadApps}
-            />
-          ) : !selectedApp ? (
-            <div className="text-center py-20 bg-white border border-slate-200 rounded-2xl p-8 shadow-xs">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-4 border border-indigo-100">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <h2 className="text-xl font-bold text-slate-900">No Applications Created Yet</h2>
-              <p className="text-sm text-slate-500 mt-1 max-w-md mx-auto">
-                You currently have no applications. Click the button below to create your first MalikAuth application and start generating secure license keys.
-              </p>
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="mt-6 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs transition-colors shadow-sm shadow-indigo-600/20"
-              >
-                + Create First Application
-              </button>
-            </div>
-          ) : (
-            <div className="animate-in fade-in duration-200">
-              {activeTab === 'overview' && (
-                <DashboardOverview
-                  app={selectedApp}
-                  licenses={licenses}
-                  users={users}
-                  sessions={sessions}
-                  logs={logs}
-                  onRefresh={() => loadAllData(selectedApp)}
-                  onNavigateToTab={(tab) => setActiveTab(tab)}
-                />
-              )}
-
-              {activeTab === 'csharp_sdk' && (
-                <SdkFilesTab app={selectedApp} />
-              )}
-
-              {activeTab === 'licenses' && (
-                <LicensesTab
-                  appId={selectedApp.appId}
-                  licenses={licenses}
-                  onRefresh={() => loadAllData(selectedApp)}
-                />
-              )}
-
-              {activeTab === 'users' && (
-                <UsersTab
-                  appId={selectedApp.appId}
-                  users={users}
-                  onRefresh={() => loadAllData(selectedApp)}
-                />
-              )}
-
-              {activeTab === 'sessions' && (
-                <SessionsTab
-                  appId={selectedApp.appId}
-                  sessions={sessions}
-                  onRefresh={() => loadAllData(selectedApp)}
-                />
-              )}
-
-              {activeTab === 'remote' && (
-                <RemoteVariablesTab
-                  appId={selectedApp.appId}
-                  variables={remoteVariables}
-                  onRefresh={() => loadAllData(selectedApp)}
-                />
-              )}
-
-              {activeTab === 'logs' && (
-                <ActivityLogsTab
-                  logs={logs}
-                  onRefresh={() => loadAllData(selectedApp)}
-                />
-              )}
-            </div>
-          )}
-        </main>
-
-        {/* Footer */}
-        <footer className="border-t border-slate-200 bg-white py-6 text-xs text-slate-500 mt-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center space-x-2">
-              <span className="font-bold text-slate-800">MalikAuth Security Platform</span>
-              <span className="text-slate-300">•</span>
-              <span>Enterprise Remote Licensing & Memory Security</span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-emerald-600 font-semibold flex items-center space-x-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-                <span>Firebase Cloud Active</span>
-              </span>
-              <span className="text-slate-400 font-mono">MalikAuth v2.5.0</span>
-            </div>
-          </div>
-        </footer>
       </div>
-
-      {/* Create Application Modal */}
-      <CreateAppModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onAppCreated={handleAppCreated}
-      />
-
-      {/* Authentication Modal */}
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onSuccess={() => setViewMode('console')}
-      />
-    </div>
+    </SafeRender>
   );
 }
