@@ -1,0 +1,489 @@
+openapi: 3.0.3
+info:
+  title: MalikAuth Security Platform API
+  description: |
+    Unified API for the MalikAuth software licensing and security platform.
+    All actions are routed through a single endpoint using the `action` field.
+
+    ## Authentication
+    All requests require an API key via the `X-API-Key` header.
+
+    ## Rate Limits
+    - Global: 100 requests per 15 minutes
+    - Auth (register/login): 10 requests per 15 minutes
+    - Heartbeat: 60 requests per minute
+  version: 2.6.0
+  contact:
+    name: MalikAuth Support
+    url: https://malikauth.ai
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development
+  - url: https://malikauth.ai
+    description: Production
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: SDK
+    description: SDK file retrieval
+  - name: Auth
+    description: Client initialization and authentication
+  - name: Users
+    description: User management
+  - name: Licenses
+    description: License key management
+  - name: Sessions
+    description: Session management
+  - name: Password
+    description: Password reset flow
+  - name: Email
+    description: Email verification
+
+paths:
+  /api/v1:
+    get:
+      tags: [Health]
+      summary: Health check
+      description: Returns service health status including database connectivity.
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is degraded (database disconnected)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponseDegraded'
+
+    post:
+      summary: Unified API endpoint
+      description: |
+        All API actions are routed through this endpoint using the `action` field in the request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/InitRequest'
+                - $ref: '#/components/schemas/RegisterRequest'
+                - $ref: '#/components/schemas/LoginRequest'
+                - $ref: '#/components/schemas/LicenseRequest'
+                - $ref: '#/components/schemas/HeartbeatRequest'
+                - $ref: '#/components/schemas/PasswordResetRequest'
+                - $ref: '#/components/schemas/PasswordResetConfirmRequest'
+                - $ref: '#/components/schemas/VerifyEmailRequest'
+              discriminator:
+                propertyName: action
+      responses:
+        '200':
+          description: Action executed successfully
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/InitResponse'
+                  - $ref: '#/components/schemas/RegisterResponse'
+                  - $ref: '#/components/schemas/LoginResponse'
+                  - $ref: '#/components/schemas/LicenseResponse'
+                  - $ref: '#/components/schemas/HeartbeatResponse'
+                  - $ref: '#/components/schemas/SuccessMessageResponse'
+        '400':
+          description: Invalid request or unknown action
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized (invalid API key or credentials)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden (banned, expired, or disabled)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '405':
+          description: Method not allowed (GET for non-health actions)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '423':
+          description: Account locked (too many failed attempts)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: API key for authenticating with the MalikAuth platform.
+
+  schemas:
+    # ── Common ─────────────────────────────────────────────
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          description: Human-readable error message
+      required: [success, message]
+
+    SuccessMessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          description: Success message
+
+    # ── Health ─────────────────────────────────────────────
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok]
+          example: ok
+        service:
+          type: string
+          example: MalikAuth Security Platform
+        db:
+          type: string
+          enum: [connected]
+          example: connected
+        uptime:
+          type: number
+          format: double
+          description: Server uptime in seconds
+
+    HealthResponseDegraded:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [degraded]
+          example: degraded
+        service:
+          type: string
+          example: MalikAuth Security Platform
+        db:
+          type: string
+          enum: [disconnected]
+          example: disconnected
+        uptime:
+          type: number
+          format: double
+
+    # ── Init ───────────────────────────────────────────────
+    InitRequest:
+      type: object
+      required: [action, appId, version, hwid]
+      properties:
+        action:
+          type: string
+          enum: [init]
+        appId:
+          type: string
+          description: Application identifier
+          example: app_abc123
+        appSecret:
+          type: string
+          description: Application secret (optional for verification)
+          example: secret_xyz789
+        version:
+          type: string
+          description: Client application version
+          example: 1.0.0
+        hwid:
+          type: string
+          description: Hardware identifier of the client machine
+          example: HWID-ABC123DEF456
+
+    InitResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: MalikAuth Security Engine Initialized Successfully
+        appName:
+          type: string
+          example: My Application
+        version:
+          type: string
+          example: 1.0.0
+        hwid:
+          type: string
+          example: HWID-ABC123DEF456
+
+    # ── Register ───────────────────────────────────────────
+    RegisterRequest:
+      type: object
+      required: [action, appId, username, password, licenseKey, hwid]
+      properties:
+        action:
+          type: string
+          enum: [register]
+        appId:
+          type: string
+          example: app_abc123
+        username:
+          type: string
+          minLength: 3
+          maxLength: 32
+          description: Username (alphanumeric, 3-32 characters)
+          example: john_doe
+        password:
+          type: string
+          minLength: 6
+          description: User password (minimum 6 characters)
+          example: secureP@ss123
+        licenseKey:
+          type: string
+          description: License key in format MALIK-XXXX-XXXX-XXXX-XXXX
+          example: MALIK-ABCD-1234-EFGH-5678
+        hwid:
+          type: string
+          description: Hardware identifier
+          example: HWID-ABC123DEF456
+
+    RegisterResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Account 'john_doe' registered successfully! License key redeemed.
+        username:
+          type: string
+          example: john_doe
+        role:
+          type: string
+          example: Premium Member
+        sessionId:
+          type: string
+          example: SESS-ABC12345
+        hwid:
+          type: string
+          example: HWID-ABC123DEF456
+
+    # ── Login ──────────────────────────────────────────────
+    LoginRequest:
+      type: object
+      required: [action, appId, username, password, hwid]
+      properties:
+        action:
+          type: string
+          enum: [login]
+        appId:
+          type: string
+          example: app_abc123
+        username:
+          type: string
+          example: john_doe
+        password:
+          type: string
+          example: secureP@ss123
+        hwid:
+          type: string
+          example: HWID-ABC123DEF456
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Login Successful!
+        username:
+          type: string
+          example: john_doe
+        role:
+          type: string
+          example: Active Member
+        sessionId:
+          type: string
+          example: SESS-ABC12345
+        hwid:
+          type: string
+          example: HWID-ABC123DEF456
+
+    # ── License ────────────────────────────────────────────
+    LicenseRequest:
+      type: object
+      required: [action, appId, licenseKey, hwid]
+      properties:
+        action:
+          type: string
+          enum: [license]
+        appId:
+          type: string
+          example: app_abc123
+        licenseKey:
+          type: string
+          description: License key to activate
+          example: MALIK-ABCD-1234-EFGH-5678
+        hwid:
+          type: string
+          example: HWID-ABC123DEF456
+
+    LicenseResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: License Key activated successfully!
+        key:
+          type: string
+          example: MALIK-ABCD-1234-EFGH-5678
+        status:
+          type: string
+          enum: [Used]
+          example: Used
+        hwid:
+          type: string
+          example: HWID-ABC123DEF456
+
+    # ── Heartbeat ──────────────────────────────────────────
+    HeartbeatRequest:
+      type: object
+      required: [action, appId, sessionId, hwid]
+      properties:
+        action:
+          type: string
+          enum: [heartbeat]
+        appId:
+          type: string
+          example: app_abc123
+        sessionId:
+          type: string
+          description: Active session identifier
+          example: SESS-ABC12345
+        hwid:
+          type: string
+          example: HWID-ABC123DEF456
+
+    HeartbeatResponse:
+      type: object
+      properties:
+        active:
+          type: boolean
+          description: Whether the session is still active
+          example: true
+        status:
+          type: string
+          enum: [Active, NotFound, Terminated, Expired]
+          example: Active
+
+    # ── Password Reset ─────────────────────────────────────
+    PasswordResetRequest:
+      type: object
+      required: [action, appId, username, email]
+      properties:
+        action:
+          type: string
+          enum: [password-reset]
+        appId:
+          type: string
+          example: app_abc123
+        username:
+          type: string
+          example: john_doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+
+    PasswordResetConfirmRequest:
+      type: object
+      required: [action, appId, username, token, newPassword]
+      properties:
+        action:
+          type: string
+          enum: [password-reset-confirm]
+        appId:
+          type: string
+          example: app_abc123
+        username:
+          type: string
+          example: john_doe
+        token:
+          type: string
+          description: Reset token received via email
+          example: abc123def456ghi789
+        newPassword:
+          type: string
+          minLength: 6
+          example: newSecureP@ss
+
+    # ── Email Verification ─────────────────────────────────
+    VerifyEmailRequest:
+      type: object
+      required: [action, appId, username, token]
+      properties:
+        action:
+          type: string
+          enum: [verify-email]
+        appId:
+          type: string
+          example: app_abc123
+        username:
+          type: string
+          example: john_doe
+        token:
+          type: string
+          description: Verification token received via email
+          example: abc123def456ghi789
+
+security:
+  - ApiKeyAuth: []

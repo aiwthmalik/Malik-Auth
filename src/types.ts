@@ -95,3 +95,81 @@ export interface MalikAnalyticsLog {
   details: string;
   timestamp: string;
 }
+
+export interface MalikToken {
+  id?: string;
+  token: string;
+  appId: string;
+  name?: string;
+  maxUses: number;
+  usesCount: number;
+  expiry?: string;
+  status: 'Active' | 'Expired' | 'Revoked';
+  lastUsed?: string;
+  createdAt: string;
+}
+
+export interface MalikSubscription {
+  id?: string;
+  appId: string;
+  name: string;
+  price: number;
+  durationDays: number;
+  features: string[];
+  maxUsers: number;
+  status: 'Active' | 'Inactive';
+  createdAt: string;
+}
+
+export interface MalikUserSubscription {
+  id?: string;
+  userId: string;
+  subscriptionId: string;
+  appId: string;
+  status: 'active' | 'cancelled' | 'past_due';
+  startDate: string;
+  renewalDate: string;
+  createdAt: string;
+}
+
+export interface MalikFunction {
+  id?: string;
+  appId: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+  requiredTier: string;
+  enabledForUsers: string[];
+  createdAt: string;
+}
+
+export interface MalikDownload {
+  id?: string;
+  appId: string;
+  originalUrl: string;
+  downloadUrl: string;
+  expiry: string;
+  maxDownloads: number;
+  downloadCount: number;
+  status: 'Active' | 'Expired' | 'Revoked';
+  createdAt: string;
+}
+
+export interface MalikHashCheck {
+  id?: string;
+  appId: string;
+  fileName: string;
+  expectedHash: string;
+  fileSize: number;
+  appVersion: string;
+  uploadedAt: string;
+}
+
+export interface MalikChatMessage {
+  id?: string;
+  appId: string;
+  sender: string;
+  senderType: 'user' | 'admin' | 'system';
+  message: string;
+  timestamp: string;
+}

@@ -101,7 +101,7 @@ export const RemoteVariablesTab: React.FC<RemoteVariablesTabProps> = ({
       />
 
       {/* Create Variable Form */}
-      <Card
+      <CreateVariableForm
         onSubmit={handleSave}
         keyState={key}
         setKeyState={setKey}
@@ -219,7 +219,7 @@ export const RemoteVariablesTab: React.FC<RemoteVariablesTabProps> = ({
 };
 
 /* ---------- Inline Create Form ---------- */
-const Card = ({
+const CreateVariableForm = ({
   onSubmit,
   keyState,
   setKeyState,

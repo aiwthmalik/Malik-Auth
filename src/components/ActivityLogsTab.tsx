@@ -7,8 +7,26 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { MalikActivityLog } from '../types';
-import { formatPKTDateTime } from '../lib/dateUtils';
+import { formatPKTDateTime, parseExpiryToDate } from '../lib/dateUtils';
 import { PageHeader, EmptyState, TableShell, Sensitive } from './ui';
+
+function getRelativeTime(timestamp: string): string {
+  const date = parseExpiryToDate(timestamp) || new Date(timestamp);
+  if (isNaN(date.getTime())) return '';
+  const now = Date.now();
+  const diffMs = now - date.getTime();
+  if (diffMs < 0) return 'just now';
+  const sec = Math.floor(diffMs / 1000);
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hrs = Math.floor(min / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
 
 interface ActivityLogsTabProps {
   logs: MalikActivityLog[];
@@ -123,8 +141,11 @@ export const ActivityLogsTab: React.FC<ActivityLogsTabProps> = ({ logs, onRefres
             <td className="py-3.5 px-4 text-xs text-surface-700 dark:text-surface-300">
               {log.details}
             </td>
-            <td className="py-3.5 px-4 text-right text-xs font-medium text-surface-500 dark:text-surface-400">
-              {formatPKTDateTime(log.timestamp)}
+            <td className="py-3.5 px-4 text-right text-xs">
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="font-medium text-surface-700 dark:text-surface-300">{formatPKTDateTime(log.timestamp)}</span>
+                <span className="text-[10px] text-surface-400 dark:text-surface-500">{getRelativeTime(log.timestamp)}</span>
+              </div>
             </td>
           </tr>
         ))}

@@ -6,3 +6,20 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Firebase secrets
+firebase-admin-config.json
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+Thumbs.db
+
+# Backup files
+firestore.backup.json
+
+# OS files
+*.swp
+*.swo
+*~

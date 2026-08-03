@@ -124,6 +124,48 @@ export const Sensitive: React.FC<{ value: string; className?: string }> = ({ val
   </span>
 );
 
+/* ---------- Empty State with Action ---------- */
+export const EmptyStateAction: React.FC<{
+  icon: LucideIcon;
+  title: string;
+  message?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}> = ({ icon: Icon, title, message, actionLabel, onAction }) => (
+  <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+    <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-surface-200 bg-surface-50 text-surface-400 dark:border-white/10 dark:bg-white/[0.03] dark:text-surface-500">
+      <Icon className="h-6 w-6" />
+    </div>
+    <h3 className="text-sm font-bold text-surface-900 dark:text-white">{title}</h3>
+    {message && <p className="mt-1 max-w-md text-xs text-surface-500 dark:text-surface-400">{message}</p>}
+    {actionLabel && onAction && (
+      <button onClick={onAction} className="btn-primary mt-5">
+        {actionLabel}
+      </button>
+    )}
+  </div>
+);
+
+/* ---------- Empty State with Illustration ---------- */
+export const EmptyStateIllustration: React.FC<{
+  icon: LucideIcon;
+  title: string;
+  message?: string;
+  action?: React.ReactNode;
+}> = ({ icon: Icon, title, message, action }) => (
+  <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+    <div className="relative mb-6">
+      <div className="absolute inset-0 rounded-full bg-brand-500/10 blur-2xl" />
+      <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-surface-200 bg-white text-surface-300 shadow-lg dark:border-white/10 dark:bg-white/[0.04] dark:text-surface-600">
+        <Icon className="h-9 w-9" />
+      </div>
+    </div>
+    <h3 className="text-base font-bold text-surface-900 dark:text-white">{title}</h3>
+    {message && <p className="mt-2 max-w-sm text-sm text-surface-500 dark:text-surface-400">{message}</p>}
+    {action && <div className="mt-6">{action}</div>}
+  </div>
+);
+
 /* ---------- Section label ---------- */
 export const FieldLabel: React.FC<{ children: React.ReactNode; required?: boolean }> = ({ children, required }) => (
   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-surface-600 dark:text-surface-400">

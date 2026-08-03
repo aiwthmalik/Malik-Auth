@@ -15,6 +15,7 @@ import { MalikApp, MalikLicense, MalikUser, MalikSession, MalikActivityLog } fro
 import { updateApp, logActivity } from '../lib/malikAuthService';
 import { isExpired } from '../lib/dateUtils';
 import { Card, FieldLabel, Sensitive } from './ui';
+import { GlobalStats } from './GlobalStats';
 
 interface DashboardOverviewProps {
   app: MalikApp;
@@ -22,6 +23,10 @@ interface DashboardOverviewProps {
   users: MalikUser[];
   sessions: MalikSession[];
   logs: MalikActivityLog[];
+  allApps?: MalikApp[];
+  allLicenses?: MalikLicense[];
+  allUsers?: MalikUser[];
+  allSessions?: MalikSession[];
   onRefresh: () => void;
   onNavigateToTab: (tab: string) => void;
 }
@@ -32,6 +37,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   users,
   sessions,
   logs,
+  allApps,
+  allLicenses,
+  allUsers,
+  allSessions,
   onRefresh,
   onNavigateToTab,
 }) => {
@@ -109,6 +118,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Platform Overview */}
+      <GlobalStats
+        apps={allApps || [app]}
+        licenses={allLicenses || licenses}
+        users={allUsers || users}
+        sessions={allSessions || sessions}
+      />
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((s) => (

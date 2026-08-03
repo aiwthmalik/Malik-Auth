@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SkipToContent } from './SkipToContent';
 import {
   ShieldCheck,
   Code2,
@@ -22,7 +23,7 @@ import {
   Github,
   Globe
 } from 'lucide-react';
-import { Theme } from '../lib/useTheme';
+import { useTheme } from '../lib/useTheme';
 
 interface LandingPageProps {
   onOpenAuthModal: () => void;
@@ -30,8 +31,6 @@ interface LandingPageProps {
   isLoggedIn: boolean;
   userEmail?: string | null;
   onSignOut?: () => void;
-  theme?: Theme;
-  onToggleTheme?: () => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
@@ -40,9 +39,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   isLoggedIn,
   userEmail,
   onSignOut,
-  theme,
-  onToggleTheme,
 }) => {
+  const { theme, toggleTheme } = useTheme();
   const [activeCodeTab, setActiveCodeTab] = useState<'initialize' | 'validate' | 'hwid' | 'remote'>('initialize');
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -167,8 +165,9 @@ console.log("Remote sync successful. Target offset:", memOffset);
 
   return (
     <div className="min-h-screen bg-surface-50 text-surface-900 dark:bg-[#0b0b12] dark:text-surface-100">
+      <SkipToContent />
       {/* Top Navigation */}
-      <header className="sticky top-0 z-50 border-b border-surface-200/70 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b12]/80">
+      <header role="banner" className="sticky top-0 z-50 border-b border-surface-200/70 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0b12]/80">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-violet-600 shadow-md shadow-brand-500/25">
@@ -182,7 +181,7 @@ console.log("Remote sync successful. Target offset:", memOffset);
             </div>
           </div>
 
-          <nav className="hidden items-center gap-8 text-sm font-medium text-surface-600 dark:text-surface-300 md:flex">
+          <nav aria-label="Main navigation" className="hidden items-center gap-8 text-sm font-medium text-surface-600 dark:text-surface-300 md:flex">
             <a href="#features" className="transition-colors hover:text-brand-500">Features</a>
             <a href="#security" className="transition-colors hover:text-brand-500">Security Engine</a>
             <a href="#pricing" className="transition-colors hover:text-brand-500">Pricing</a>
@@ -190,7 +189,8 @@ console.log("Remote sync successful. Target offset:", memOffset);
 
           <div className="flex items-center gap-2.5">
             <button
-              onClick={onToggleTheme}
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
               title="Toggle theme"
               className="rounded-xl border border-surface-200 bg-white p-2 text-surface-500 transition-colors hover:text-surface-900 dark:border-white/10 dark:bg-white/[0.04] dark:text-surface-300 dark:hover:text-white"
             >
@@ -209,6 +209,7 @@ console.log("Remote sync successful. Target offset:", memOffset);
                 {onSignOut && (
                   <button
                     onClick={onSignOut}
+                    aria-label="Sign Out"
                     title="Sign Out"
                     className="rounded-xl border border-surface-200 bg-white p-2 text-surface-500 transition-colors hover:text-rose-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-surface-300"
                   >
@@ -229,6 +230,8 @@ console.log("Remote sync successful. Target offset:", memOffset);
 
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileOpen}
               className="rounded-xl border border-surface-200 bg-white p-2 text-surface-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-surface-300 md:hidden"
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -258,7 +261,7 @@ console.log("Remote sync successful. Target offset:", memOffset);
       </header>
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
+      <section id="main-content" aria-label="Hero" className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid" />
         <div className="absolute -top-40 left-1/2 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-gradient-to-r from-brand-500/20 via-violet-500/20 to-cyan-500/20 blur-3xl" />
         <div className="relative mx-auto max-w-7xl px-4 pb-24 pt-16 text-center sm:px-6 lg:px-8 lg:pt-24">
@@ -312,7 +315,7 @@ console.log("Remote sync successful. Target offset:", memOffset);
       </section>
 
       {/* Features */}
-      <section id="features" className="relative py-24">
+      <section id="features" aria-label="Features" className="relative py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto mb-16 max-w-3xl text-center">
             <span className="text-xs font-bold uppercase tracking-widest text-brand-500">Features</span>
@@ -340,7 +343,7 @@ console.log("Remote sync successful. Target offset:", memOffset);
       </section>
 
       {/* Security Engine / Code */}
-      <section id="security" className="relative py-24">
+      <section id="security" aria-label="Security Engine" className="relative py-24">
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-brand-500/[0.04] to-transparent" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
@@ -407,7 +410,7 @@ console.log("Remote sync successful. Target offset:", memOffset);
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24">
+      <section id="pricing" aria-label="Pricing" className="py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto mb-16 max-w-3xl text-center">
             <span className="text-xs font-bold uppercase tracking-widest text-brand-500">Pricing</span>
@@ -461,7 +464,7 @@ console.log("Remote sync successful. Target offset:", memOffset);
       </section>
 
       {/* CTA */}
-      <section className="relative overflow-hidden py-24">
+      <section aria-label="Call to action" className="relative overflow-hidden py-24">
         <div className="absolute inset-0 bg-gradient-to-br from-brand-600 via-violet-600 to-brand-800" />
         <div className="absolute inset-0 bg-grid opacity-20" />
         <div className="relative mx-auto max-w-4xl px-4 text-center sm:px-6">
@@ -491,7 +494,7 @@ console.log("Remote sync successful. Target offset:", memOffset);
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-surface-200 bg-white/60 py-8 text-xs text-surface-500 backdrop-blur dark:border-white/10 dark:bg-white/[0.02] dark:text-surface-400">
+      <footer role="contentinfo" className="border-t border-surface-200 bg-white/60 py-8 text-xs text-surface-500 backdrop-blur dark:border-white/10 dark:bg-white/[0.02] dark:text-surface-400">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-brand-500" />

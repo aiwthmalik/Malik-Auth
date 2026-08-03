@@ -5,21 +5,50 @@ import {
   Key,
   Users,
   Radio,
-  FileCode,
   Code2,
   PlusCircle,
   LogOut,
   Home,
   ChevronDown,
+  ChevronRight,
   Check,
   Shield,
   Sun,
   Moon,
   Sparkles,
-  AppWindow
+  AppWindow,
+  CreditCard,
+  ToggleLeft,
+  Download,
+  FileCheck,
+  MessageSquare,
+  Fingerprint,
+  Trash2,
+  StickyNote,
+  BarChart3,
+  RefreshCw,
+  ShieldAlert,
+  Globe,
+  Store,
+  Smartphone,
+  Users2,
+  History,
+  Activity,
+  Bell,
+  Bot,
+  Mail,
+  Webhook,
+  Lock,
+  UserCheck,
+  Copy,
+  Palette,
+  Search,
+  UserCog,
+  Import,
+  Settings
 } from 'lucide-react';
 import { MalikApp } from '../types';
-import { Theme } from '../lib/useTheme';
+import { useTheme } from '../lib/useTheme';
 
 interface SidebarProps {
   apps: MalikApp[];
@@ -31,8 +60,12 @@ interface SidebarProps {
   userEmail?: string | null;
   onSignOut?: () => void;
   onOpenLanding?: () => void;
-  theme?: Theme;
-  onToggleTheme?: () => void;
+  activeSessions?: number;
+}
+
+interface NavSection {
+  label: string;
+  items: { id: string; label: string; icon: any }[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -45,24 +78,93 @@ export const Sidebar: React.FC<SidebarProps> = ({
   userEmail,
   onSignOut,
   onOpenLanding,
-  theme,
-  onToggleTheme,
+  activeSessions,
 }) => {
-  console.log('[Sidebar] rendering with apps:', apps?.length || 0, 'selected:', selectedApp?.name);
+  const { theme, toggleTheme } = useTheme();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
 
-  const navItems = [
-    { id: 'manage_apps', label: 'Applications', icon: AppWindow },
-    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-    { id: 'csharp_sdk', label: 'C# WinForms SDK', icon: Code2 },
-    { id: 'users', label: 'End Users', icon: Users },
-    { id: 'licenses', label: 'License Keys', icon: Key },
-    { id: 'sessions', label: 'Live Sessions', icon: Radio },
-    { id: 'remote', label: 'Remote Variables', icon: Sparkles },
+  const toggleSection = (label: string) => {
+    setCollapsedSections(prev => ({ ...prev, [label]: !prev[label] }));
+  };
+
+  const sections: NavSection[] = [
+    {
+      label: 'Core',
+      items: [
+        { id: 'manage_apps', label: 'Applications', icon: AppWindow },
+        { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+        { id: 'csharp_sdk', label: 'C# WinForms SDK', icon: Code2 },
+      ],
+    },
+    {
+      label: 'Licensing',
+      items: [
+        { id: 'licenses', label: 'License Keys', icon: Key },
+        { id: 'tokens', label: 'Tokens', icon: CreditCard },
+        { id: 'subscriptions', label: 'Subscriptions', icon: RefreshCw },
+        { id: 'license_mask', label: 'Key Generator', icon: Fingerprint },
+        { id: 'license_groups', label: 'Key Groups', icon: Sparkles },
+        { id: 'key_import', label: 'Import Keys', icon: Import },
+        { id: 'bulk_delete', label: 'Bulk Delete', icon: Trash2 },
+      ],
+    },
+    {
+      label: 'Users & Sessions',
+      items: [
+        { id: 'users', label: 'End Users', icon: Users },
+        { id: 'sessions', label: 'Live Sessions', icon: Radio },
+        { id: 'user_notes', label: 'User Notes', icon: StickyNote },
+        { id: 'user_impersonation', label: 'Impersonate User', icon: UserCheck },
+        { id: 'sub_accounts', label: 'Team / Sub-Accounts', icon: Users2 },
+      ],
+    },
+    {
+      label: 'Security',
+      items: [
+        { id: 'client_2fa', label: 'Client 2FA', icon: Lock },
+        { id: 'hash_checks', label: 'Hash Checks', icon: FileCheck },
+        { id: 'anti_tamper', label: 'Anti-Tamper', icon: ShieldAlert },
+        { id: 'geo_blocking', label: 'Geo-Blocking', icon: Globe },
+        { id: 'ip_whitelist', label: 'IP Whitelist', icon: Shield },
+        { id: 'download_protection', label: 'Download Protection', icon: Download },
+      ],
+    },
+    {
+      label: 'Remote Config',
+      items: [
+        { id: 'remote', label: 'Remote Variables', icon: Settings },
+        { id: 'functions', label: 'Feature Flags', icon: ToggleLeft },
+        { id: 'auto_updater', label: 'Auto-Updater', icon: RefreshCw },
+      ],
+    },
+    {
+      label: 'Communication',
+      items: [
+        { id: 'chat', label: 'Chat System', icon: MessageSquare },
+        { id: 'webhook_settings', label: 'Webhook Settings', icon: Webhook },
+        { id: 'webhook_history', label: 'Webhook History', icon: History },
+        { id: 'email_notifications', label: 'Email Notifications', icon: Mail },
+        { id: 'telegram_bot', label: 'Telegram Bot', icon: Bot },
+        { id: 'notifications', label: 'In-App Notifications', icon: Bell },
+      ],
+    },
+    {
+      label: 'Analytics & Platform',
+      items: [
+        { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+        { id: 'api_analytics', label: 'API Analytics', icon: Activity },
+        { id: 'download_counter', label: 'Download Stats', icon: BarChart3 },
+        { id: 'seller_api', label: 'Seller API', icon: Store },
+        { id: 'branding', label: 'Branding', icon: Palette },
+        { id: 'role_manager', label: 'Role Manager', icon: UserCog },
+        { id: 'mobile', label: 'Mobile View', icon: Smartphone },
+      ],
+    },
   ];
 
   return (
-    <aside className="sticky top-0 z-30 flex h-screen w-64 shrink-0 flex-col border-r border-surface-200 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-[#0d0d16]/90">
+    <aside className="sticky top-0 z-30 hidden lg:flex h-screen w-64 shrink-0 flex-col border-r border-surface-200 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-[#0d0d16]/90">
       {/* Brand Header */}
       <div className="flex items-center justify-between border-b border-surface-200 p-5 dark:border-white/10">
         <div className="flex items-center gap-3">
@@ -75,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
         <button
-          onClick={onToggleTheme}
+          onClick={toggleTheme}
           title="Toggle theme"
           className="rounded-lg p-2 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-700 dark:hover:bg-white/10 dark:hover:text-white"
         >
@@ -138,31 +240,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wider text-surface-400 dark:text-surface-500">
-          Management
-        </div>
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
+      <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+        {sections.map((section) => {
+          const isCollapsed = collapsedSections[section.label];
           return (
-            <button
-              key={item.id}
-              onClick={() => onSelectTab(item.id)}
-              className={`group flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all ${
-                isActive
-                  ? 'bg-gradient-to-r from-brand-500/15 to-violet-500/10 text-brand-700 shadow-sm dark:text-brand-300'
-                  : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-300 dark:hover:bg-white/[0.05] dark:hover:text-white'
-              }`}
-            >
-              <Icon
-                className={`h-5 w-5 shrink-0 transition-colors ${
-                  isActive ? 'text-brand-500' : 'text-surface-400 group-hover:text-surface-600 dark:group-hover:text-surface-200'
-                }`}
-              />
-              <span>{item.label}</span>
-              {isActive && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-brand-500" />}
-            </button>
+            <div key={section.label} className="mb-1">
+              <button
+                onClick={() => toggleSection(section.label)}
+                className="flex w-full items-center justify-between px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-surface-400 dark:text-surface-500 hover:text-surface-600 dark:hover:text-surface-300 transition-colors"
+              >
+                {section.label}
+                {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </button>
+              {!isCollapsed && section.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => onSelectTab(item.id)}
+                    className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium transition-all ${
+                      isActive
+                        ? 'bg-gradient-to-r from-brand-500/15 to-violet-500/10 text-brand-700 shadow-sm dark:text-brand-300'
+                        : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-300 dark:hover:bg-white/[0.05] dark:hover:text-white'
+                    }`}
+                  >
+                    <Icon
+                      className={`h-4 w-4 shrink-0 transition-colors ${
+                        isActive ? 'text-brand-500' : 'text-surface-400 group-hover:text-surface-600 dark:group-hover:text-surface-200'
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                    {item.id === 'sessions' && activeSessions && activeSessions > 0 && (
+                      <span className="ml-auto flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                        {activeSessions}
+                      </span>
+                    )}
+                    {isActive && item.id !== 'sessions' && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-brand-500" />}
+                  </button>
+                );
+              })}
+            </div>
           );
         })}
       </nav>
@@ -195,7 +314,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Home className="h-3.5 w-3.5" />
             Landing Page
           </button>
-          <span className="font-mono text-surface-400 dark:text-surface-500">v2.5.0</span>
+          <span className="font-mono text-surface-400 dark:text-surface-500">v2.6.0</span>
         </div>
       </div>
     </aside>

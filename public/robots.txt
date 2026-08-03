@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /console/
+
+Sitemap: https://malikauth.com/sitemap.xml

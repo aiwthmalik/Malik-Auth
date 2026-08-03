@@ -39,7 +39,11 @@ export const SdkFilesTab: React.FC<SdkFilesTabProps> = ({ app }) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/v1/sdk/csharp-files');
+      const res = await fetch('/api/v1', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sdk-files' }),
+      });
       const data = await res.json();
       if (data.success && Array.isArray(data.files)) {
         setFiles(data.files);
